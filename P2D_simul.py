@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special as sp
 from scipy.optimize import minimize 
-
+import time
 
 # P2D(r|mu,s) = (r/s^2)*exp(-(mu^2+r^2)/(2*s^2))*I0(r*mu/s^2) Eq. (4)
 # I0 = Modified Bessel function of order 0.
@@ -143,6 +143,7 @@ mu1r = np.empty((3, len(sm_range)));
 mu2r = np.empty((3, len(sm_range)));
 mu3r = np.empty((3, len(sm_range)));
 
+start = time.clock()
 j=0
 for sm in sm_range:
     mu0 = []; mu1 = []; mu2 = []; mu3 = []
@@ -171,7 +172,13 @@ for sm in sm_range:
     j+=1
     
     print(sm)
-
+    done = sm/max(sm_range)*100
+    now = time.clock()
+    spent = (now-start)/60 # time passed in min
+    print(spent)
+    print(spent*(100-done)/done)
+  
+    
 fig3 = plt.figure(3)
 sp31 = fig3.add_subplot(241); 
 sp31.errorbar(x=sm_range, y=mu0r[0], yerr=mu0r[1], color='k'); 
