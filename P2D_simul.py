@@ -178,7 +178,6 @@ sp31.errorbar(x=sm_range, y=mu0r[0], yerr=mu0r[1], color='k');
 sp31.axhline(y=mu, color='k', linewidth=0.5)
 sp31.axis([min(sm_range)-1, max(sm_range)+1, 5, 15])
 sp31.set_title('mu=%.1f (init=1), repeat=%d, particle=%d  \nP2D MLE' % (mu, repeat, N))
-sp31.set_title('P2D MLE (mu = %.1f, particle = %d, repeat = %d)' % (mu, N, repeat))
 sp31.set_ylabel('Estimation of mu')
 
 sp32 = fig3.add_subplot(242); 
