@@ -46,7 +46,7 @@ mu = 10.0
 sm = 10.0 # sigma mean
 ss = sm/3.0 # sigma sigma
 st = (sm**2 + ss**2)**0.5
-N = 1000
+N = 10000
 
 sm_range = np.arange(1, 31, 1)
 repeat = 1000
