@@ -1,5 +1,5 @@
 
-# Simulate P2D in Churchman papep (Jongmin Sung, 6/9/17)
+# Simulate P2D in Churchman papep (Jongmin Sung)
 
 from __future__ import division, print_function, absolute_import
 import numpy as np
