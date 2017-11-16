@@ -58,7 +58,7 @@ file_s.close()
 
 r = np.array(rl)
 si = np.array(sl)
-si = si + 5.5
+si = si*2.5
 
 
 # Parameters
