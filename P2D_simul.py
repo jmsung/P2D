@@ -42,11 +42,11 @@ def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
     
 
 # Parameters
-mu = 10.0 
-sm = 10.0 # sigma mean
-ss = sm/3.0 # sigma sigma
+mu = 8.6 
+sm = 7.9 # sigma mean
+ss = 2.8 # sigma sigma
 st = (sm**2 + ss**2)**0.5
-N = 10000
+N = 1000
 
 sm_range = np.arange(1, 31, 1)
 repeat = 1000
@@ -135,6 +135,7 @@ title24 = 'P2D MLE, fixed sigma_individual (mu_fit = %.1f, error = %.1f %%)'  % 
 sp24.set_title(title24)
 
 
+"""
 ###########################################################################
 # Scan over sigma to compare
 
@@ -229,6 +230,9 @@ sp38.plot(sm_range, mu3r[2], 'ro')
 sp38.axhline(y=100, color='k', linewidth=0.5)
 sp38.axis([min(sm_range)-1, max(sm_range)+1, 0, 110])
 sp38.set_xlabel('Sigma_mean')
+"""
+
+
 
 plt.show()
 
