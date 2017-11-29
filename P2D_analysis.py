@@ -78,51 +78,65 @@ result3 = P2D_MLE_mu(mu, si, r); mu_si = result3["x"]
 plt.close('all')
 fig1 = plt.figure(1)
 
-# Sigma distribution
-sp11 = fig1.add_subplot(231)
-sp11.hist(si, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-title11 = 'Sigma distribution (mean = %.1f, sd = %.1f)' % (np.mean(si), np.std(si))
-sp11.set_title(title11)
+# sp1. Sigma distribution
+sp1 = fig1.add_subplot(241)
+sp1.hist(si, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+title1 = 'Sigma distribution (mean = %.1f, sd = %.1f)' % (np.mean(si), np.std(si))
+sp1.set_title(title1)
 
-# Euclidean distance - histogram
-sp12 = fig1.add_subplot(232)
-hist12 = sp12.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-nc = N*(hist12[1][1] - hist12[1][0])
+# sp2. Euclidean distance - histogram
+sp2 = fig1.add_subplot(242)
+hist2 = sp2.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+nc = N*(hist2[1][1] - hist2[1][0])
 xx = np.linspace(max(min(r), 0), max(r), 100)
-title12 = 'Euclidean distance (N = %d)' % (N)
-sp12.set_title(title12)
+title2 = 'Euclidean distance (N = %d)' % (N)
+sp2.set_title(title2)
 
-# P2D MLE with mu, sigma
-sp13 = fig1.add_subplot(233)
-sp13.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp13.plot(xx, nc*P2D(mu0, s0, xx), 'r', linewidth=2)
-title13 = 'P2D MLE (mu_fit = %.1f, s_fit = %.1f)' % (mu0, s0)
-sp13.set_title(title13)
+# sp3. R vs sigma scatter
+sp3 = fig1.add_subplot(243)
+sp3.plot(r, si, 'k.', markersize=5, alpha=0.5)
+title3 = 'R vs Sigma (corr = %.2f)' % (np.corrcoef(r, si)[0,1]) 
+sp3.set_title(title3)
+sp3.set_aspect('equal')
 
-# P2D MLE with mu, given sm
-sp14 = fig1.add_subplot(234)
-sp14.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp14.plot(xx, nc*P2D(mu_sm, sm, xx), 'r', linewidth=2)
-title14 = 'P2D MLE, fixed sigma_mean (mu_fit = %.1f)'  % (mu_sm)
-sp14.set_title(title14)
+# sp4. R vs sigma 2D histogram
+sp4 = fig1.add_subplot(244)
+sp4.hist2d(r, si, bins=10)
+sp4.set_aspect('equal')
+title4 = 'R vs sigma histogram' 
+sp4.set_title(title4)
 
-# P2D MLE with mu, given st
-sp15 = fig1.add_subplot(235)
-sp15.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp15.plot(xx, nc*P2D(mu_st, st, xx), 'r', linewidth=2)
-title15 = 'P2D MLE, fixed sigma_total (mu_fit = %.1f)'  % (mu_st)
-sp15.set_title(title15)
+# sp5. P2D MLE with mu, sigma
+sp5 = fig1.add_subplot(245)
+sp5.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp5.plot(xx, nc*P2D(mu0, s0, xx), 'r', linewidth=2)
+title5 = 'P2D (mu_fit = %.1f, s_fit = %.1f)' % (mu0, s0)
+sp5.set_title(title5)
 
-# P2D MLE with mu, given si
-sp16 = fig1.add_subplot(236)
-sp16.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+# sp6. P2D MLE with mu, given sm
+sp6 = fig1.add_subplot(246)
+sp6.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp6.plot(xx, nc*P2D(mu_sm, sm, xx), 'r', linewidth=2)
+title6 = 'P2D_sm (mu_fit = %.1f)'  % (mu_sm)
+sp6.set_title(title6)
+
+# sp7. P2D MLE with mu, given st
+sp7 = fig1.add_subplot(247)
+sp7.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp7.plot(xx, nc*P2D(mu_st, st, xx), 'r', linewidth=2)
+title7 = 'P2D_st (mu_fit = %.1f)'  % (mu_st)
+sp7.set_title(title7)
+
+# sp8. P2D MLE with mu, given si
+sp8 = fig1.add_subplot(248)
+sp8.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 P2Ds = np.zeros((N, len(xx)), dtype=float)
 for i in range(len(si)):
     P2Ds[i] = P2D(mu_si, si[i], xx)
 P2Dsm = np.mean(P2Ds, axis=0)
-sp16.plot(xx, nc*P2Dsm, 'r', linewidth=2)
-title16 = 'P2D MLE, fixed sigma_individual (mu_fit = %.1f)'  % (mu_si)
-sp16.set_title(title16)
+sp8.plot(xx, nc*P2Dsm, 'r', linewidth=2)
+title8 = 'P2D_si (mu_fit = %.1f)'  % (mu_si)
+sp8.set_title(title8)
 
 plt.show()
 
