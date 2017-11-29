@@ -40,20 +40,20 @@ def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
 #    print(result["x"]); print(result["success"])
     return result
     
-
 # Parameters
-mu_m = 8.0 
-mu_s = 4.0
+mu_m = 8.5
+mu_s = 0.1
+mu1 = mu_m - mu_s
+mu2 = mu_m + mu_s
 s_m = 8.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 s_t = (s_m**2 + s_s**2)**0.5
-N = 10000
+s_shape = (s_m/s_s)**2.0
+s_scale = (s_s**2.0)/s_m
+N = 1000
 
-# Get a dataset 
-shape = (s_m/s_s)**2.0
-scale = (s_s**2.0)/s_m
-
-s_i = np.random.gamma(shape, scale, N)
+# Generate a dataset 
+s_i = np.random.gamma(s_shape, s_scale, N)
 mu_i = mu_m + mu_s * np.random.randn(N)
 x = s_i * np.random.randn(N) + mu_i
 y = s_i * np.random.randn(N)  
@@ -69,67 +69,102 @@ result3 = P2D_MLE_mu(mu_m, s_i, r); mu_si = result3["x"]
 plt.close('all')
 fig1 = plt.figure(1)
 
-# Mu distribution
-sp11 = fig1.add_subplot(222)
-sp11.hist(mu
+# sp1. Mu distribution
+sp1 = fig1.add_subplot(3,4,1)
+sp1.hist(mu_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+title1 = 'Mu distribution (%.1f +/- %.1f)' % (mu_m, mu_s)
+sp1.set_title(title1)
+sp1.axvline(x=mu_m, color='k', linewidth=0.5)
 
-# Sigma distribution
-sp11 = fig1.add_subplot(222)
-sp11.hist(mu_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-title11 = 'Sigma distribution (mean = %.1f, sd = %.1f)' % (s_m, s_s)
+# sp2. Sigma distribution
+sp2 = fig1.add_subplot(3,4,2)
+sp2.hist(s_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+title2 = 'Sigma distribution (%.1f +/- %.1f)' % (s_m, s_s)
+sp2.set_title(title2)
+sp2.axvline(x=s_m, color='k', linewidth=0.5)
+
+# sp3. 2D localization scatter
+sp3 = fig1.add_subplot(3,4,3)
+sp3.plot(x, y, 'k.', markersize=2, alpha=0.2)
+sp3.plot(mu_m, 0, 'r.', markersize = 10)
+title3 = '2D Locatization (mu = %.1f, N = %d)' % (mu_m, N)
+sp3.set_title(title3)
+sp3.set_aspect('equal')
+sp3.axhline(y=0, color='k', linewidth=0.5)
+sp3.axvline(x=0, color='k', linewidth=0.5)
+
+# sp4. 2D localization histogram
+sp4 = fig1.add_subplot(3,4,4)
+sp4.hist2d(x, y, bins=50)
+title4 = '2D Locatization histogram' 
+sp4.set_title(title4)
+sp4.set_aspect('equal')
+sp4.axhline(y=0, color='w', linewidth=0.5)
+sp4.axvline(x=0, color='w', linewidth=0.5)
+
+# sp5. Histogram in X location
+sp5 = fig1.add_subplot(3,4,5)
+hist5 = sp5.hist(x, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp5.set_title('Location in X')
+sp5.axvline(x=0, color='k', linewidth=0.5)
+
+# sp6. Euclidean distance - histogram
+sp6 = fig1.add_subplot(3,4,6)
+hist6 = sp6.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+nc = N*(hist6[1][1] - hist6[1][0])
+xx = np.linspace(max(min(r), 0), max(r), 100)
+sp6.set_title('Euclidean distance (R)')
+sp6.axvline(x=mu_m, color='k', linewidth=0.5)
+
+# sp7. R vs sigma scatter
+sp7 = fig1.add_subplot(3,4,7)
+sp7.plot(r, s_i, 'k.', markersize=5, alpha=0.5)
+sp7.plot(mu_m, s_m, 'r.', markersize = 10)
+title7 = 'R vs Sigma (corr = %.2f)' % (np.corrcoef(r, s_i)[0,1])
+sp7.set_title(title7)
+sp7.set_aspect('equal')
+#sp7.set_aspect('equal', 'datalim')
+
+# sp8. R vs sigma 2D histogram
+sp8 = fig1.add_subplot(3,4,8)
+sp8.hist2d(r, s_i, bins=10)
+sp8.set_aspect('equal')
+sp8.axhline(y=s_m, color='w', linewidth=0.5)
+sp8.axvline(x=mu_m, color='w', linewidth=0.5)
+title8 = 'R vs sigma histogram' 
+sp8.set_title(title8)
+
+# sp9. P2D MLE with mu, sigma
+sp9 = fig1.add_subplot(3,4,9)
+sp9.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp9.plot(xx, nc*P2D(mu0, s0, xx), 'r', linewidth=2)
+title9 = 'P2D (mu = %.1f, error = %.1f %%)' % (mu0, 100*(mu0/mu_m-1))
+sp9.set_title(title9)
+
+# sp10. P2D MLE with mu, given sm
+sp10 = fig1.add_subplot(3,4,10)
+sp10.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp10.plot(xx, nc*P2D(mu_sm, s_t, xx), 'r', linewidth=2)
+title10 = 'P2D_sm (mu = %.1f, error = %.1f %%)'  % (mu_sm, 100*(mu_sm/mu_m-1))
+sp10.set_title(title10)
+
+# sp11. P2D MLE with mu, given st
+sp11 = fig1.add_subplot(3,4,11)
+sp11.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp11.plot(xx, nc*P2D(mu_st, s_t, xx), 'r', linewidth=2)
+title11 = 'P2D_st (mu = %.1f, error = %.1f %%)'  % (mu_st, 100*(mu_st/mu_m-1))
 sp11.set_title(title11)
 
-# 2D location
-sp12 = fig1.add_subplot(221)
-sp12.plot(x, y, 'b.', markersize=2, alpha=0.2)
-sp12.plot(mu_m, 0, 'r.', markersize = 10)
-title12 = '2D Location (mu = %.1f, N = %d)' % (mu_m, N)
-sp12.set_title(title12)
-sp12.set_aspect('equal', 'datalim')
-sp12.axhline(y=0, color='k', linewidth=0.5)
-sp12.axvline(x=0, color='k', linewidth=0.5)
-
-# Projection of location in X
-sp14 = fig1.add_subplot(223)
-hist14 = sp14.hist(x, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp14.set_title('Location in X')
-sp14.axvline(x=0, color='k', linewidth=0.5)
-
-# Euclidean distance - histogram
-sp13 = fig1.add_subplot(224)
-hist13 = sp13.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-nc = N*(hist13[1][1] - hist13[1][0])
-xx = np.linspace(max(min(r), 0), max(r), 100)
-sp13.set_title('Euclidean distance')
-
-# Figure 2
-fig2 = plt.figure(2)
-
-# P2D MLE with mu, sigma
-sp21 = fig2.add_subplot(221)
-sp21.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp21.plot(xx, nc*P2D(mu0, s0, xx), 'r', linewidth=2)
-title21 = 'P2D MLE (mu_fit = %.1f, error = %.1f %%)' % (mu0, 100*(mu0/mu_m-1))
-sp21.set_title(title21)
-
-
-# P2D MLE with mu, given st
-sp23 = fig2.add_subplot(223)
-sp23.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp23.plot(xx, nc*P2D(mu_st, s_t, xx), 'r', linewidth=2)
-title23 = 'P2D MLE, fixed sigma_total = %.1f (mu_fit = %.1f, error = %.1f %%)'  % (s_t, mu_st, 100*(mu_st/mu_m-1))
-sp23.set_title(title23)
-
-# P2D MLE with mu, given si
-sp24 = fig2.add_subplot(224)
-sp24.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+# sp12. P2D MLE with mu, given si
+sp12 = fig1.add_subplot(3,4,12)
+sp12.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 P2Ds = np.zeros((N, len(xx)), dtype=float)
 for i in range(len(s_i)):
     P2Ds[i] = P2D(mu_si, s_i[i], xx)
 P2Dsm = np.mean(P2Ds, axis=0)
-sp24.plot(xx, nc*P2Dsm, 'r', linewidth=2)
-title24 = 'P2D MLE, fixed sigma_individual (mu_fit = %.1f, error = %.1f %%)'  % (mu_si, 100*(mu_si/mu_m-1))
-sp24.set_title(title24)
+sp12.plot(xx, nc*P2Dsm, 'r', linewidth=2)
+title12 = 'P2D_si (mu = %.1f, error = %.1f %%)'  % (mu_si, 100*(mu_si/mu_m-1))
+sp12.set_title(title12)
 
 plt.show()
 
