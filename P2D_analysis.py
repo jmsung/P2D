@@ -101,7 +101,7 @@ sp3.set_aspect('equal')
 
 # sp4. R vs sigma 2D histogram
 sp4 = fig1.add_subplot(244)
-sp4.hist2d(r, si, bins=10)
+sp4.hist2d(r, si, bins=20)
 sp4.set_aspect('equal')
 title4 = 'R vs sigma histogram' 
 sp4.set_title(title4)
