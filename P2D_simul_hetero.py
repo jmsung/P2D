@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special as sp
 from scipy.optimize import minimize 
+import random
 import time
 
 # P2D(r|mu,s) = (r/s^2)*exp(-(mu^2+r^2)/(2*s^2))*I0(r*mu/s^2) Eq. (4)
@@ -41,20 +42,24 @@ def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
     return result
     
 # Parameters
-mu_m = 8.5
-mu_s = 0.1
+mu_m = 8.6
+mu_s = 1.0
 mu1 = mu_m - mu_s
 mu2 = mu_m + mu_s
-s_m = 8.0 # sigma mean
+s_m = 7.9 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 s_t = (s_m**2 + s_s**2)**0.5
 s_shape = (s_m/s_s)**2.0
 s_scale = (s_s**2.0)/s_m
-N = 1000
+N = 1261
+bin2 = 50
 
 # Generate a dataset 
 s_i = np.random.gamma(s_shape, s_scale, N)
-mu_i = mu_m + mu_s * np.random.randn(N)
+mu1_i = np.array([mu1]*int(N/2))
+mu2_i = np.array([mu2]*(N-int(N/2)))
+mu_i = np.concatenate((mu1_i, mu2_i)); random.shuffle(mu_i)
+#mu_i = mu_m + mu_s * np.random.randn(N)
 x = s_i * np.random.randn(N) + mu_i
 y = s_i * np.random.randn(N)  
 r = (x**2.0 + y**2.0)**0.5
@@ -95,7 +100,7 @@ sp3.axvline(x=0, color='k', linewidth=0.5)
 
 # sp4. 2D localization histogram
 sp4 = fig1.add_subplot(3,4,4)
-sp4.hist2d(x, y, bins=50)
+sp4.hist2d(x, y, bins=bin2)
 title4 = '2D Locatization histogram' 
 sp4.set_title(title4)
 sp4.set_aspect('equal')
@@ -127,7 +132,7 @@ sp7.set_aspect('equal')
 
 # sp8. R vs sigma 2D histogram
 sp8 = fig1.add_subplot(3,4,8)
-sp8.hist2d(r, s_i, bins=10)
+sp8.hist2d(r, s_i, bins=bin2)
 sp8.set_aspect('equal')
 sp8.axhline(y=s_m, color='w', linewidth=0.5)
 sp8.axvline(x=mu_m, color='w', linewidth=0.5)
