@@ -43,16 +43,16 @@ def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
     
 # Parameters
 mu_m = 8.6
-mu_s = 1.0
+mu_s = 0.01
 mu1 = mu_m - mu_s
 mu2 = mu_m + mu_s
-s_m = 7.9 # sigma mean
+s_m = 17.9 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 s_t = (s_m**2 + s_s**2)**0.5
 s_shape = (s_m/s_s)**2.0
 s_scale = (s_s**2.0)/s_m
-N = 1261
-bin2 = 50
+N = 12610
+bin2 = 20
 
 # Generate a dataset 
 s_i = np.random.gamma(s_shape, s_scale, N)
@@ -65,10 +65,10 @@ y = s_i * np.random.randn(N)
 r = (x**2.0 + y**2.0)**0.5
 
 # P2D fitting with theoretical function and MLE 
-result0 = P2D_MLE_mu_s(mu_m, s_m, r); mu0, s0 = result0["x"]  
-result1 = P2D_MLE_mu(mu_m, s_m, r); mu_sm = result1["x"] 
-result2 = P2D_MLE_mu(mu_m, s_t, r); mu_st = result2["x"]
-result3 = P2D_MLE_mu(mu_m, s_i, r); mu_si = result3["x"] 
+result0 = P2D_MLE_mu_s(mu_m, s_m, r); mu0, s0 = result0["x"]; score0 = result0["fun"]  
+result1 = P2D_MLE_mu(mu_m, s_m, r); mu_sm = result1["x"]; score1 = result1["fun"] 
+result2 = P2D_MLE_mu(mu_m, s_t, r); mu_st = result2["x"]; score2 = result2["fun"]
+result3 = P2D_MLE_mu(mu_m, s_i, r); mu_si = result3["x"]; score3 = result3["fun"] 
 
 # Figure 1
 plt.close('all')
@@ -143,21 +143,21 @@ sp8.set_title(title8)
 sp9 = fig1.add_subplot(3,4,9)
 sp9.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 sp9.plot(xx, nc*P2D(mu0, s0, xx), 'r', linewidth=2)
-title9 = 'P2D (mu = %.1f, error = %.1f %%)' % (mu0, 100*(mu0/mu_m-1))
+title9 = 'P2D (mu=%.1f, err=%.1f%%, score=%d)' % (mu0, 100*(mu0/mu_m-1), score0)
 sp9.set_title(title9)
 
 # sp10. P2D MLE with mu, given sm
 sp10 = fig1.add_subplot(3,4,10)
 sp10.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 sp10.plot(xx, nc*P2D(mu_sm, s_t, xx), 'r', linewidth=2)
-title10 = 'P2D_sm (mu = %.1f, error = %.1f %%)'  % (mu_sm, 100*(mu_sm/mu_m-1))
+title10 = 'P2D_sm (mu=%.1f, err=%.1f%%, score=%d)'  % (mu_sm, 100*(mu_sm/mu_m-1), score1)
 sp10.set_title(title10)
 
 # sp11. P2D MLE with mu, given st
 sp11 = fig1.add_subplot(3,4,11)
 sp11.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 sp11.plot(xx, nc*P2D(mu_st, s_t, xx), 'r', linewidth=2)
-title11 = 'P2D_st (mu = %.1f, error = %.1f %%)'  % (mu_st, 100*(mu_st/mu_m-1))
+title11 = 'P2D_st (mu=%.1f, err=%.1f%%, score=%d)'  % (mu_st, 100*(mu_st/mu_m-1), score2)
 sp11.set_title(title11)
 
 # sp12. P2D MLE with mu, given si
@@ -168,7 +168,7 @@ for i in range(len(s_i)):
     P2Ds[i] = P2D(mu_si, s_i[i], xx)
 P2Dsm = np.mean(P2Ds, axis=0)
 sp12.plot(xx, nc*P2Dsm, 'r', linewidth=2)
-title12 = 'P2D_si (mu = %.1f, error = %.1f %%)'  % (mu_si, 100*(mu_si/mu_m-1))
+title12 = 'P2D_si (mu=%.1f, err=%.1f%%, score=%d)'  % (mu_si, 100*(mu_si/mu_m-1), score3)
 sp12.set_title(title12)
 
 plt.show()
