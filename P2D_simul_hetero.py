@@ -14,24 +14,26 @@ import random
 def P2D(mu, s, r):   
     return (r/s**2)*np.exp(-(mu**2 + r**2)/(2*s**2))*sp.i0(r*mu/s**2)
 
-def Loglike_P2D_mu_s(param, r): 
+# LogLikelihood
+def LL_mu_s(param, r): 
     mu, s = np.abs(param)   
     return np.sum(np.log10(P2D(mu, s, r)))
 
 def P2D_MLE_mu_s(mu, s, r): # original P2D MLE
-    fun = lambda *args: -Loglike_P2D_mu_s(*args)
+    fun = lambda *args: -LL_mu_s(*args)
 #    p0 = [10*mu*np.random.rand(), 10*st*np.random.rand()]
     p0 = [mu_m, s_t]
     bnds = [(0.001, 2*mu_m), (0.001, 2*s_t)]
     result = minimize(fun, p0, method='SLSQP', bounds=bnds, args=r)
     return result
 
-def Loglike_P2D_mu(param, s, r):
+# LogLikelihood 
+def LL_mu(param, s, r):
     mu = np.abs(param)      
     return np.sum(np.log10(P2D(mu, s, r)))
 
 def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
-    fun = lambda *args: -Loglike_P2D_mu(*args)
+    fun = lambda *args: -LL_mu(*args)
 #    p0 = [10*mu*np.random.rand()]
     p0 = [mu_m]
     bnds = [(0.001, 2*mu_m)]
@@ -50,8 +52,7 @@ s_shape = (s_m/s_s)**2.0
 s_scale = (s_s**2.0)/s_m
 N = 1261
 bin2 = 50
-step = 0.001
-mu_range = np.arange(mu_m-1, mu_m+1, step)
+mu_range = np.linspace(mu_m-1, mu_m+1, 100)
 
 # Generate a dataset 
 s_i = np.random.gamma(s_shape, s_scale, N)
@@ -70,29 +71,29 @@ result2 = P2D_MLE_mu(mu_m, s_t, r); mu_st = result2["x"]; score2 = result2["fun"
 result3 = P2D_MLE_mu(mu_m, s_i, r); mu_si = result3["x"]; score3 = result3["fun"] 
 
 # LogLikelihood surface 
-LL_sm = np.zeros(len(mu_range))
-LL_st = np.zeros(len(mu_range))
 LL_si = np.zeros(len(mu_range))
-
 i = 0
-for mu_scan in mu_range:
-    LL_sm[i] = abs(Loglike_P2D_mu(mu_scan, s_m, r)); 
-    LL_st[i] = abs(Loglike_P2D_mu(mu_scan, s_t, r));     
-    LL_si[i] = abs(Loglike_P2D_mu(mu_scan, s_i, r));     
+for mu_scan in mu_range:  
+    LL_si[i] = abs(LL_mu(mu_scan, s_i, r));     
     i+=1
 
 # Error estimation
-dLL_sm = (LL_sm[1:] - LL_sm[0:-1])/step
-dLL_st = (LL_st[1:] - LL_st[0:-1])/step
-dLL_si = (LL_si[1:] - LL_si[0:-1])/step
+dmu = 0.001
+Info_sm = abs(LL_mu(mu_sm+dmu, s_m, r) + LL_mu(mu_sm-dmu, s_m, r) - 2*LL_mu(mu_sm, s_m, r))/dmu**2
+Info_st = abs(LL_mu(mu_st+dmu, s_t, r) + LL_mu(mu_st-dmu, s_t, r) - 2*LL_mu(mu_st, s_t, r))/dmu**2
+Info_si = abs(LL_mu(mu_si+dmu, s_i, r) + LL_mu(mu_si-dmu, s_i, r) - 2*LL_mu(mu_si, s_i, r))/dmu**2
+mu_std_sm = 1/Info_sm**0.5
+mu_std_st = 1/Info_st**0.5
+mu_std_si = 1/Info_si**0.5
 
-Information_sm = (dLL_sm[1:] - dLL_sm[0:-1])/step
-Information_st = (dLL_st[1:] - dLL_st[0:-1])/step
-Information_si = (dLL_si[1:] - dLL_si[0:-1])/step
-
-mu_std_sm = 1/(Information_sm[np.argmin(abs(mu_range-mu_sm))-1])**0.5
-mu_std_st = 1/(Information_st[np.argmin(abs(mu_range-mu_st))-1])**0.5
-mu_std_si = 1/(Information_si[np.argmin(abs(mu_range-mu_si))-1])**0.5
+# Test mu_error with diff step size
+dmu_range = np.logspace(0, -4, 100)
+mu_error = 0*dmu_range
+i=0
+for dmu in dmu_range:
+    info = abs(LL_mu(mu_si+dmu, s_i, r) + LL_mu(mu_si-dmu, s_i, r) - 2*LL_mu(mu_si, s_i, r))/dmu**2
+    mu_error[i] = 1/info**0.5
+    i+=1
 
 # Figure 1
 plt.close('all')
@@ -150,10 +151,10 @@ sp7 = fig1.add_subplot(3,4,7)
 sp7.plot(mu_range, LL_si, 'k-')
 plt.title('LogLikelihood')
 
-# sp8. Information 
+# sp8. Error estimation
 sp8 = fig1.add_subplot(3,4,8)
-sp8.plot(mu_range[1:-1], Information_si, 'k-')
-plt.title('Fisher Information')
+sp8.semilogx(dmu_range, mu_error, 'k.')
+plt.title('Error estimation')
 
 
 # sp9. P2D MLE with mu, sigma
@@ -190,7 +191,6 @@ sp12.set_title(title12)
 
 plt.subplots_adjust(left=None, bottom=None, right=None, top=None,
                 wspace=0.3, hspace=0.3)
+
 plt.show()
-
-
 
