@@ -41,33 +41,31 @@ def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
     return result
     
 # Parameters
-mu_m = 8.6
-mu_s = 0.01
+mu_m = 10.0
+mu_s = 1.0
 mu1 = mu_m - mu_s
 mu2 = mu_m + mu_s
-s_m = 7.9 # sigma mean
+p1 = 0.4; p2 = 1-p1
+s_m = 2.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 s_t = (s_m**2 + s_s**2)**0.5
 s_shape = (s_m/s_s)**2.0
 s_scale = (s_s**2.0)/s_m
-N = 1261
+N = 1000
 bin2 = 50
 mu_range = np.linspace(mu_m-1, mu_m+1, 100)
 
 # Generate a dataset 
 s_i = np.random.gamma(s_shape, s_scale, N)
-mu1_i = np.array([mu1]*int(N/2))
-mu2_i = np.array([mu2]*(N-int(N/2)))
-#mu_i = np.concatenate((mu1_i, mu2_i)); random.shuffle(mu_i)
-mu_i = mu_m + mu_s * np.random.randn(N)
+mu1_i = np.array([mu1]*int(N*p1))
+mu2_i = np.array([mu2]*(N-int(N*p1)))
+mu_i = np.concatenate((mu1_i, mu2_i)); random.shuffle(mu_i)
+#mu_i = mu_m + mu_s * np.random.randn(N)
 x = s_i * np.random.randn(N) + mu_i
 y = s_i * np.random.randn(N)  
 r = (x**2.0 + y**2.0)**0.5
 
 # P2D fitting with theoretical function and MLE 
-result0 = P2D_MLE_mu_s(mu_m, s_m, r); mu0, s0 = result0["x"]; score0 = result0["fun"]  
-result1 = P2D_MLE_mu(mu_m, s_m, r); mu_sm = result1["x"]; score1 = result1["fun"] 
-result2 = P2D_MLE_mu(mu_m, s_t, r); mu_st = result2["x"]; score2 = result2["fun"]
 result3 = P2D_MLE_mu(mu_m, s_i, r); mu_si = result3["x"]; score3 = result3["fun"] 
 
 # LogLikelihood surface 
@@ -79,11 +77,7 @@ for mu_scan in mu_range:
 
 # Error estimation
 dmu = 0.001
-Info_sm = abs(LL_mu(mu_sm+dmu, s_m, r) + LL_mu(mu_sm-dmu, s_m, r) - 2*LL_mu(mu_sm, s_m, r))/dmu**2
-Info_st = abs(LL_mu(mu_st+dmu, s_t, r) + LL_mu(mu_st-dmu, s_t, r) - 2*LL_mu(mu_st, s_t, r))/dmu**2
 Info_si = abs(LL_mu(mu_si+dmu, s_i, r) + LL_mu(mu_si-dmu, s_i, r) - 2*LL_mu(mu_si, s_i, r))/dmu**2
-mu_std_sm = 1/Info_sm**0.5
-mu_std_st = 1/Info_st**0.5
 mu_std_si = 1/Info_si**0.5
 
 # Test mu_error with diff step size
@@ -101,7 +95,7 @@ fig1 = plt.figure(1)
 
 # sp1. Mu distribution
 sp1 = fig1.add_subplot(3,4,1)
-sp1.hist(mu_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp1.hist(mu_i, bins=100, normed=False, color='k', histtype='step', linewidth=2)
 title1 = 'Mu (%.1f +/- %.1f)' % (mu_m, mu_s)
 sp1.set_title(title1)
 sp1.axvline(x=mu_m, color='k', linewidth=0.5)
@@ -155,28 +149,6 @@ plt.title('LogLikelihood')
 sp8 = fig1.add_subplot(3,4,8)
 sp8.semilogx(dmu_range, mu_error, 'k.')
 plt.title('Error estimation')
-
-
-# sp9. P2D MLE with mu, sigma
-sp9 = fig1.add_subplot(3,4,9)
-sp9.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp9.plot(xx, nc*P2D(mu0, s0, xx), 'r', linewidth=2)
-title9 = 'P2D (mu=%.1f, err=%.1f%%, score=%d)' % (mu0, 100*(mu0/mu_m-1), score0)
-sp9.set_title(title9)
-
-# sp10. P2D MLE with mu, given sm
-sp10 = fig1.add_subplot(3,4,10)
-sp10.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp10.plot(xx, nc*P2D(mu_sm, s_t, xx), 'r', linewidth=2)
-title10 = 'P2D_sm (mu=%.1f+/-%.1f, er=%.1f%%, sc=%d)'  % (mu_sm, mu_std_sm, 100*(mu_sm/mu_m-1), score1)
-sp10.set_title(title10)
-
-# sp11. P2D MLE with mu, given st
-sp11 = fig1.add_subplot(3,4,11)
-sp11.hist(r, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp11.plot(xx, nc*P2D(mu_st, s_t, xx), 'r', linewidth=2)
-title11 = 'P2D_st (mu=%.1f+/-%.1f, er=%.1f%%, sc=%d)'  % (mu_st, mu_std_st, 100*(mu_st/mu_m-1), score2)
-sp11.set_title(title11)
 
 # sp12. P2D MLE with mu, given si
 sp12 = fig1.add_subplot(3,4,12)
