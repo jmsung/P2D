@@ -138,67 +138,49 @@ Info2 = abs(LL(mu2[-1]+dmu, s2, r2) + LL(mu2[-1]-dmu, s2, r2) - 2*LL(mu2[-1], s2
 mu_s1 = 1/Info1**0.5
 mu_s2 = 1/Info2**0.5
 
-
 # Figure 1
 plt.close('all')
 fig1 = plt.figure(1)
 bin2d = 20
 
 # sp1. Mu distribution
-sp1 = fig1.add_subplot(3,4,1)
+sp1 = fig1.add_subplot(2,3,1)
 sp1.hist(mu_i, bins=1000, normed=False, color='k', histtype='step', linewidth=2)
-title1 = 'Mu (%.1f +/- %.1f) = %.1f (%d), %.1f (%d)' \
-                % (mu_m, mu_s, mu[0], N_i[0], mu[1], N_i[1])
+title1 = 'Mu = %.1f (%d), %.1f (%d) (%.1f +/- %.1f) ' \
+                % (mu[0], N_i[0], mu[1], N_i[1], mu_m, mu_s)
 sp1.set_title(title1)
 sp1.axvline(x=mu_m, color='k', linewidth=0.5)
 
 # sp2. Sigma distribution
-sp2 = fig1.add_subplot(3,4,2)
+sp2 = fig1.add_subplot(2,3,2)
 sp2.hist(s_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 title2 = 'Sigma (%.1f +/- %.1f)' % (s_m, s_s)
 sp2.set_title(title2)
-sp2.axvline(x=s_m, color='k', linewidth=0.5)
+sp2.axvline(x=s_m, color='r', linewidth=2.0)
 
-# sp3. 2D localization histogram
-sp3 = fig1.add_subplot(3,4,3)
-sp3.hist2d(x_i, y_i, bins=bin2d)
-sp3.set_title('2D Localization')
-sp3.set_aspect('equal')
-sp3.axhline(y=0, color='w', linewidth=0.5)
-sp3.axvline(x=0, color='w', linewidth=0.5)
-
-# sp4. R vs sigma 2D histogram
-sp4 = fig1.add_subplot(3,4,4)
-sp4.hist2d(r_i, s_i, bins=bin2d)
-sp4.set_aspect('equal')
-sp4.axhline(y=s_m, color='w', linewidth=0.5)
-title4 = 'R vs Sigma (corr = %.2f)' % (np.corrcoef(r_i, s_i)[0,1])
-sp4.set_title(title4)
-plt.xlabel('Euclidean distance')
-plt.ylabel('Sigma')
-
-# sp5. Euclidean distance - histogram
-sp5 = fig1.add_subplot(3,4,5)
-histxx = sp5.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+# sp3. Euclidean distance - histogram
+sp3 = fig1.add_subplot(2,3,3)
+histxx = sp3.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 nc = N*(histxx[1][1] - histxx[1][0])
 xx = np.linspace(max(min(r_i), 0), max(r_i), 100)
-sp5.set_title('Euclidean distance (R)')
-sp5.axvline(x=mu_m, color='k', linewidth=0.5)
+sp3.set_title('Euclidean distance (R)')
+for i in range(len(mu)):
+    sp3.axvline(x=mu[i], color='r', linewidth=2.0)
 
-# sp6. P2D MLE with mu
-sp6 = fig1.add_subplot(3,4,6)
-sp6.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+# sp4. P2D MLE with mu
+sp4 = fig1.add_subplot(2,3,4)
+sp4.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 P2D0 = np.zeros((N, len(xx)), dtype=float)
 for i in range(len(s_i)):
     P2D0[i] = P2D(mu0, s_i[i], xx)
 P2D0m = np.mean(P2D0, axis=0)
-sp6.plot(xx, nc*P2D0m, 'r', linewidth=2)
-title6 = 'P2D (mu=%.1f+/-%.1f, LL=%d)'  % (mu0, mu_s0, score0)
-sp6.set_title(title6)
+sp4.plot(xx, nc*P2D0m, 'r', linewidth=2)
+title4 = 'mu=%.1f+/-%.1f\nLL=%d'  % (mu0, mu_s0, score0)
+sp4.set_title(title4)
 
-# sp7. P2D MLE with mu1 and mu2
-sp7 = fig1.add_subplot(3,4,7)
-sp7.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+# sp5. P2D MLE with mu1 and mu2
+sp5 = fig1.add_subplot(2,3,5)
+sp5.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 P2D1 = np.zeros((N, len(xx)), dtype=float)
 for i in range(len(s_i)):
     if gg[i] == 0:
@@ -206,21 +188,15 @@ for i in range(len(s_i)):
     else:
         P2D1[i] = P2D(mu2[-1], s_i[i], xx)                
 P2D1m = np.mean(P2D1, axis=0)
-sp7.plot(xx, nc*P2D1m, 'r', linewidth=2)
-title7 = 'P2D (mu1=%.1f+/-%.1f, mu1=%.1f+/-%.1f, LL=%d)'  \
+sp5.plot(xx, nc*P2D1m, 'r', linewidth=2)
+title5 = 'mu1=%.1f+/-%.1f, mu2=%.1f+/-%.1f \nLL=%d'  \
             % (mu1[-1], mu_s1, mu2[-1], mu_s2, score[-1])
-sp7.set_title(title7)
+sp5.set_title(title5)
 
 
 
-# sp9. mu1/m2 iteration
-sp9 = fig1.add_subplot(3,4,9)
-sp9.plot(mu1, 'r', mu2, 'b')
-sp9.axhline(y=mu[0], color='k', linewidth=0.5)
-sp9.axhline(y=mu[1], color='k', linewidth=0.5)
-title9 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
-        % (mu1[-1], mu_s1, mu2[-1], mu_s2)
-sp9.set_title(title9)
+
+
 
 plt.subplots_adjust(wspace=0.3, hspace=0.3)
 plt.show()
@@ -228,10 +204,49 @@ plt.show()
 
 
 """
+# Subplots used previously (maybe useful again later)
+
+# sp3. 2D localization histogram
+sp3 = fig1.add_subplot(3,3,3)
+sp3.hist2d(x_i, y_i, bins=bin2d)
+sp3.set_title('2D Localization')
+sp3.set_aspect('equal')
+sp3.axhline(y=0, color='w', linewidth=0.5)
+sp3.axvline(x=0, color='w', linewidth=0.5)
+
+
+# sp3. R vs sigma 2D histogram
+sp3 = fig1.add_subplot(3,3,3)
+sp3.hist2d(r_i, s_i, bins=bin2d)
+sp3.set_aspect('equal')
+sp3.axhline(y=s_m, color='w', linewidth=0.5)
+title3 = 'R vs Sigma (corr = %.2f)' % (np.corrcoef(r_i, s_i)[0,1])
+sp3.set_title(title3)
+plt.xlabel('Euclidean distance')
+plt.ylabel('Sigma')
+
+
+# sp7. LogLikelihood plot
+sp7 = fig1.add_subplot(3,3,7)
+sp7.plot(mu_range, LL_si, 'k-')
+plt.title('LogLikelihood')
+
+
+# sp8. mu1/m2 iteration
+sp8 = fig1.add_subplot(3,3,8)
+sp8.plot(mu1, 'r', mu2, 'b')
+sp8.axhline(y=mu[0], color='k', linewidth=0.5)
+sp8.axhline(y=mu[1], color='k', linewidth=0.5)
+title8 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
+        % (mu1[-1], mu_s1, mu2[-1], mu_s2)
+sp8.set_title(title8)
+
+
 # sp8. score iteration
 sp8 = fig1.add_subplot(3,4,8)
 sp8.plot(score, 'k')
 sp8.set_title('LogLikelihood')
+
 
 # sp10. group difference
 sp10 = fig1.add_subplot(3,4,10)
@@ -240,10 +255,12 @@ sp10.axis([0, len(g_diff_percent), 0, 100])
 title10 = 'Group difference = %.1f %%' % (g_diff_percent[-1])
 sp10.set_title(title10)
 
+
 # sp11. accept iteration
 sp11 = fig1.add_subplot(3,4,11)
 sp11.plot(np.array(accept)/num_iter*100, 'k')
 sp11.set_title('Cumulative acceptance (%)')
+
 
 # sp12.score difference
 sp12 = fig1.add_subplot(3,4,12)
