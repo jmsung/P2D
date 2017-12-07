@@ -24,7 +24,7 @@ def LL(param, s, r):
 def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     fun = lambda *args: -LL(*args)
     p0 = [mu]
-    bnds = [(0.001, 10*mu)]
+    bnds = [(0.0001, 100*mu)]
     result = minimize(fun, p0, method='SLSQP', bounds=bnds, args=(s, r)) 
     return result
     
@@ -33,7 +33,7 @@ mu = [5.0, 6.0]
 N_i = [2000, 1000]
 N = sum(N_i)
 num_iter = 5*N
-s_m = 2.0 # sigma mean
+s_m = 1.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 
 group1 = np.array([0]*N_i[0])
@@ -211,10 +211,7 @@ title7 = 'P2D (mu1=%.1f+/-%.1f, mu1=%.1f+/-%.1f, LL=%d)'  \
             % (mu1[-1], mu_s1, mu2[-1], mu_s2, score[-1])
 sp7.set_title(title7)
 
-# sp8. score iteration
-sp8 = fig1.add_subplot(3,4,8)
-sp8.plot(score, 'k')
-sp8.set_title('LogLikelihood')
+
 
 # sp9. mu1/m2 iteration
 sp9 = fig1.add_subplot(3,4,9)
@@ -224,6 +221,17 @@ sp9.axhline(y=mu[1], color='k', linewidth=0.5)
 title9 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
         % (mu1[-1], mu_s1, mu2[-1], mu_s2)
 sp9.set_title(title9)
+
+plt.subplots_adjust(wspace=0.3, hspace=0.3)
+plt.show()
+
+
+
+"""
+# sp8. score iteration
+sp8 = fig1.add_subplot(3,4,8)
+sp8.plot(score, 'k')
+sp8.set_title('LogLikelihood')
 
 # sp10. group difference
 sp10 = fig1.add_subplot(3,4,10)
@@ -242,8 +250,7 @@ sp12 = fig1.add_subplot(3,4,12)
 score_diff = np.array(score[:-1]) - np.array(score[1:]) 
 sp12.semilogy(score_diff, 'k.')
 sp12.set_title('Score difference')
+"""
 
 
-plt.subplots_adjust(wspace=0.3, hspace=0.3)
-plt.show()
 
