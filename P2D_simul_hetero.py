@@ -24,15 +24,14 @@ def LL(param, s, r):
 def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     fun = lambda *args: -LL(*args)
     p0 = [mu]
-    bnds = [(0.0001, 100*mu)]
-    result = minimize(fun, p0, method='SLSQP', bounds=bnds, args=(s, r)) 
+    result = minimize(fun, p0, method='SLSQP', args=(s, r)) 
     return result
     
 # Parameters
-mu = [5.0, 6.0]
-N_i = [2000, 1000]
+mu = [5.0, 10.0]
+N_i = [100, 100]
 N = sum(N_i)
-num_iter = 5*N
+num_iter = 3*N
 s_m = 1.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 
