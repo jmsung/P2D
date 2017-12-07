@@ -29,10 +29,10 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     return result
     
 # Parameters
-mu = [8.0, 10.0]
+mu = [5.0, 6.0]
 N_i = [2000, 1000]
 N = sum(N_i)
-num_iter = 10*N
+num_iter = 5*N
 s_m = 2.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 
@@ -72,7 +72,8 @@ accept = [0]
 g_diff = [sum(abs(group-gg))]
 
 for i in range(num_iter):
-    pick = np.random.randint(N)
+#    pick = np.random.randint(N)
+    pick = i%N
     gg_temp = gg.copy()
     if gg_temp[pick] == 0: 
         gg_temp[pick] = 1
