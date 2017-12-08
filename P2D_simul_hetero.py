@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import scipy.special as sp
 from scipy.optimize import minimize 
 import random 
+from scipy.stats import gamma
 
 # P2D(r|mu,s) = (r/s^2)*exp(-(mu^2+r^2)/(2*s^2))*I0(r*mu/s^2) Eq. (4)
 # I0 = Modified Bessel function of order 0.
@@ -29,11 +30,13 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     
 # Parameters
 mu = [5.0, 10.0]
-N_i = [100, 100]
+N_i = [300, 300]
 N = sum(N_i)
 num_iter = 3*N
-s_m = 1.0 # sigma mean
+s_m = 5.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
+bin1d = 50
+bin2d = 20
 
 group1 = np.array([0]*N_i[0])
 group2 = np.array([1]*N_i[1])
@@ -59,8 +62,9 @@ r_i = (x_i**2.0 + y_i**2.0)**0.5
 # P2D MLE fitting 
 result0 = MLE(mu_m, s_i, r_i); mu0 = result0["x"]; score0 = result0["fun"] 
 
-# MC search for multi conformation
-
+################################################################################
+# MC search for multiple conformation
+################################################################################
 gg1 = np.array([0]*int(N/2))
 gg2 = np.array([1]*(N-int(N/2)))
 gg = np.concatenate((gg1, gg2))
@@ -137,65 +141,85 @@ Info2 = abs(LL(mu2[-1]+dmu, s2, r2) + LL(mu2[-1]-dmu, s2, r2) - 2*LL(mu2[-1], s2
 mu_s1 = 1/Info1**0.5
 mu_s2 = 1/Info2**0.5
 
-# Figure 1
+################################################################################
+# Figure 
+################################################################################
 plt.close('all')
 fig1 = plt.figure(1)
-bin2d = 20
 
 # sp1. Mu distribution
-sp1 = fig1.add_subplot(2,3,1)
+sp1 = fig1.add_subplot(3,3,1)
 sp1.hist(mu_i, bins=1000, normed=False, color='k', histtype='step', linewidth=2)
 title1 = 'Mu = %.1f (%d), %.1f (%d) (%.1f +/- %.1f) ' \
                 % (mu[0], N_i[0], mu[1], N_i[1], mu_m, mu_s)
+sp1.axis([0, mu[1]*1.5, 0, max(N_i)*1.2])
 sp1.set_title(title1)
 sp1.axvline(x=mu_m, color='k', linewidth=0.5)
 
 # sp2. Sigma distribution
-sp2 = fig1.add_subplot(2,3,2)
-sp2.hist(s_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp2 = fig1.add_subplot(3,3,2)
+#sp2.hist(s_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+hist_sigma = sp2.hist(s_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+nc_sigma = N*(hist_sigma[1][1] - hist_sigma[1][0])
+x_sigma = np.linspace(max(min(r_i), 0), max(r_i), 100)
+sp2.plot(x_sigma, nc_sigma*gamma.pdf(x_sigma, s_shape, 0, s_scale), 'r', linewidth=2)
 title2 = 'Sigma (%.1f +/- %.1f)' % (s_m, s_s)
 sp2.set_title(title2)
-sp2.axvline(x=s_m, color='r', linewidth=2.0)
 
 # sp3. Euclidean distance - histogram
-sp3 = fig1.add_subplot(2,3,3)
-histxx = sp3.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-nc = N*(histxx[1][1] - histxx[1][0])
-xx = np.linspace(max(min(r_i), 0), max(r_i), 100)
+sp3 = fig1.add_subplot(3,3,3)
+#histxx = sp3.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+hist_ed = sp3.hist(r_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+nc_ed = N*(hist_ed[1][1] - hist_ed[1][0])
+x_ed = np.linspace(max(min(r_i), 0), max(r_i), 100)
 sp3.set_title('Euclidean distance (R)')
 for i in range(len(mu)):
     sp3.axvline(x=mu[i], color='r', linewidth=2.0)
 
 # sp4. P2D MLE with mu
-sp4 = fig1.add_subplot(2,3,4)
-sp4.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-P2D0 = np.zeros((N, len(xx)), dtype=float)
+sp4 = fig1.add_subplot(3,3,4)
+#sp4.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp4.hist(r_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+P2D0 = np.zeros((N, len(x_ed)), dtype=float)
 for i in range(len(s_i)):
-    P2D0[i] = P2D(mu0, s_i[i], xx)
+    P2D0[i] = P2D(mu0, s_i[i], x_ed)
 P2D0m = np.mean(P2D0, axis=0)
-sp4.plot(xx, nc*P2D0m, 'r', linewidth=2)
+sp4.plot(x_ed, nc_ed*P2D0m, 'r', linewidth=2)
 title4 = 'mu=%.1f+/-%.1f\nLL=%d'  % (mu0, mu_s0, score0)
 sp4.set_title(title4)
 
 # sp5. P2D MLE with mu1 and mu2
-sp5 = fig1.add_subplot(2,3,5)
-sp5.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-P2D1 = np.zeros((N, len(xx)), dtype=float)
+sp5 = fig1.add_subplot(3,3,5)
+#sp5.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+sp5.hist(r_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+P2D1 = np.zeros((N, len(x_ed)), dtype=float)
 for i in range(len(s_i)):
     if gg[i] == 0:
-        P2D1[i] = P2D(mu1[-1], s_i[i], xx)
+        P2D1[i] = P2D(mu1[-1], s_i[i], x_ed)
     else:
-        P2D1[i] = P2D(mu2[-1], s_i[i], xx)                
+        P2D1[i] = P2D(mu2[-1], s_i[i], x_ed)                
 P2D1m = np.mean(P2D1, axis=0)
-sp5.plot(xx, nc*P2D1m, 'r', linewidth=2)
+sp5.plot(x_ed, nc_ed*P2D1m, 'r', linewidth=2)
 title5 = 'mu1=%.1f+/-%.1f, mu2=%.1f+/-%.1f \nLL=%d'  \
             % (mu1[-1], mu_s1, mu2[-1], mu_s2, score[-1])
 sp5.set_title(title5)
 
 
+# sp7. LogLikelihood plot
+sp7 = fig1.add_subplot(3,3,7)
+sp7.plot(mu_range, LL_si, 'k-')
+plt.title('LogLikelihood')
 
 
-
+# sp8. mu1/m2 iteration
+sp8 = fig1.add_subplot(3,3,8)
+sp8.plot(mu1, 'r', mu2, 'b')
+sp8.axhline(y=mu[0], color='k', linewidth=0.5)
+sp8.axhline(y=mu[1], color='k', linewidth=0.5)
+sp8.axis([0, len(mu1), 0, max(max(mu1), max(mu2))*1.2])
+title8 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
+        % (mu1[-1], mu_s1, mu2[-1], mu_s2)
+sp8.set_title(title8)
 
 plt.subplots_adjust(wspace=0.3, hspace=0.3)
 plt.show()
@@ -224,21 +248,6 @@ sp3.set_title(title3)
 plt.xlabel('Euclidean distance')
 plt.ylabel('Sigma')
 
-
-# sp7. LogLikelihood plot
-sp7 = fig1.add_subplot(3,3,7)
-sp7.plot(mu_range, LL_si, 'k-')
-plt.title('LogLikelihood')
-
-
-# sp8. mu1/m2 iteration
-sp8 = fig1.add_subplot(3,3,8)
-sp8.plot(mu1, 'r', mu2, 'b')
-sp8.axhline(y=mu[0], color='k', linewidth=0.5)
-sp8.axhline(y=mu[1], color='k', linewidth=0.5)
-title8 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
-        % (mu1[-1], mu_s1, mu2[-1], mu_s2)
-sp8.set_title(title8)
 
 
 # sp8. score iteration
