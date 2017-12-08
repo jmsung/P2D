@@ -30,10 +30,10 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     
 # Parameters
 mu = [5.0, 10.0]
-N_i = [300, 300]
+N_i = [500, 500]
 N = sum(N_i)
 num_iter = 3*N
-s_m = 5.0 # sigma mean
+s_m = 7.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 bin1d = 50
 bin2d = 20
@@ -70,9 +70,11 @@ gg2 = np.array([1]*(N-int(N/2)))
 gg = np.concatenate((gg1, gg2))
 mu1 = [mu0]
 mu2 = [mu0]
-score = [score0]
+score1 = [score0]
+score2 = [score0]
+score12 = [score0]
 accept = [0]
-g_diff = [sum(abs(group-gg))]
+g_right = [sum(group==gg)]
 
 for i in range(num_iter):
 #    pick = np.random.randint(N)
@@ -86,30 +88,33 @@ for i in range(num_iter):
     r1 = r_i[gg_temp == 0]; s1 = s_i[gg_temp == 0]
     r2 = r_i[gg_temp == 1]; s2 = s_i[gg_temp == 1]
     
-    result1 = MLE(mu1[-1], s1, r1); mu1_temp = result1["x"]; score1 = result1["fun"]
-    result2 = MLE(mu2[-1], s2, r2); mu2_temp = result2["x"]; score2 = result2["fun"]
-    score_temp = score1 + score2
+    result1 = MLE(mu1[-1], s1, r1); mu1_temp = result1["x"]; score1_temp = result1["fun"]
+    result2 = MLE(mu2[-1], s2, r2); mu2_temp = result2["x"]; score2_temp = result2["fun"]
+
+    score12_temp = score1_temp + score2_temp
+
+    accept1 = score1_temp < score1[-1]
+    accept2 = score2_temp < score2[-1]
+    accept12 = score12_temp < score12[-1]
    
-    score_diff = score_temp - score[-1]
-   
-    if score_diff < 0.0:
+    if (accept12):
         gg = gg_temp.copy()
         accept.append(accept[-1]+1)
         mu1.append(mu1_temp)
         mu2.append(mu2_temp)
-        score.append(score_temp)
+        score12.append(score12_temp)
     else:
         accept.append(accept[-1])
         mu1.append(mu1[-1])
         mu2.append(mu2[-1])    
-        score.append(score[-1])    
-        
-    g_diff_new = sum(abs(group-gg))
-    g_diff.append(g_diff_new)  
+        score12.append(score12[-1])    
+  
+    
+    g_right_new = sum(group==gg)
+    g_right.append(g_right_new)  
                                             
     if i%(num_iter/100) == 0:
         print(int(i/num_iter*100))
-
 
 # If mu1 and mu2 are swapped
 if mu1[-1] > mu2[-1]:
@@ -118,9 +123,9 @@ if mu1[-1] > mu2[-1]:
     mu2 = mu_temp
     gg = 1 - gg
 
-g_diff_percent = np.array(g_diff)/g_diff[0]*100
-if g_diff_percent[-1] > 100:
-    g_diff_percent = 200 - g_diff_percent
+g_right_percent = np.array(g_right)/N*100
+if g_right_percent[-1] < 50:
+    g_right_percent = 100 - g_right_percent
 
 # LogLikelihood surface 
 LL_si = np.zeros(len(mu_range))
@@ -148,50 +153,46 @@ plt.close('all')
 fig1 = plt.figure(1)
 
 # sp1. Mu distribution
-sp1 = fig1.add_subplot(3,3,1)
+sp1 = fig1.add_subplot(3,4,1)
 sp1.hist(mu_i, bins=1000, normed=False, color='k', histtype='step', linewidth=2)
-title1 = 'Mu = %.1f (%d), %.1f (%d) (%.1f +/- %.1f) ' \
+title1 = 'mu = %.1f (%d), %.1f (%d) (%.1f +/- %.1f) ' \
                 % (mu[0], N_i[0], mu[1], N_i[1], mu_m, mu_s)
-sp1.axis([0, mu[1]*1.5, 0, max(N_i)*1.2])
+sp1.axis([0, mu[1]*1.2, 0, max(N_i)*1.2])
 sp1.set_title(title1)
 sp1.axvline(x=mu_m, color='k', linewidth=0.5)
 
 # sp2. Sigma distribution
-sp2 = fig1.add_subplot(3,3,2)
-#sp2.hist(s_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-hist_sigma = sp2.hist(s_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+sp2 = fig1.add_subplot(3,4,2)
+hist_sigma = sp2.hist(s_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 nc_sigma = N*(hist_sigma[1][1] - hist_sigma[1][0])
-x_sigma = np.linspace(max(min(r_i), 0), max(r_i), 100)
-sp2.plot(x_sigma, nc_sigma*gamma.pdf(x_sigma, s_shape, 0, s_scale), 'r', linewidth=2)
+x_sigma = np.linspace(0, max(s_i), 100)
+sp2.plot(x_sigma, nc_sigma*gamma.pdf(x_sigma, s_shape, 0, s_scale), 'b', linewidth=2)
 title2 = 'Sigma (%.1f +/- %.1f)' % (s_m, s_s)
 sp2.set_title(title2)
 
 # sp3. Euclidean distance - histogram
-sp3 = fig1.add_subplot(3,3,3)
-#histxx = sp3.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-hist_ed = sp3.hist(r_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+sp3 = fig1.add_subplot(3,4,3)
+hist_ed = sp3.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 nc_ed = N*(hist_ed[1][1] - hist_ed[1][0])
 x_ed = np.linspace(max(min(r_i), 0), max(r_i), 100)
 sp3.set_title('Euclidean distance (R)')
-for i in range(len(mu)):
-    sp3.axvline(x=mu[i], color='r', linewidth=2.0)
+sp3.axvline(x=mu[0], color='b', linewidth=2)
+sp3.axvline(x=mu[1], color='r', linewidth=2)
 
 # sp4. P2D MLE with mu
-sp4 = fig1.add_subplot(3,3,4)
-#sp4.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp4.hist(r_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+sp4 = fig1.add_subplot(3,4,4)
+sp4.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 P2D0 = np.zeros((N, len(x_ed)), dtype=float)
 for i in range(len(s_i)):
     P2D0[i] = P2D(mu0, s_i[i], x_ed)
 P2D0m = np.mean(P2D0, axis=0)
 sp4.plot(x_ed, nc_ed*P2D0m, 'r', linewidth=2)
-title4 = 'mu=%.1f+/-%.1f\nLL=%d'  % (mu0, mu_s0, score0)
+title4 = 'mu = %.1f +/- %.1f\nLL = %d'  % (mu0, mu_s0, score0)
 sp4.set_title(title4)
 
 # sp5. P2D MLE with mu1 and mu2
-sp5 = fig1.add_subplot(3,3,5)
-#sp5.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-sp5.hist(r_i, bins=bin1d, normed=False, color='k', histtype='step', linewidth=2)
+sp5 = fig1.add_subplot(3,4,5)
+sp5.hist(r_i, bins='scott', normed=False, color='k', histtype='step', linewidth=2)
 P2D1 = np.zeros((N, len(x_ed)), dtype=float)
 for i in range(len(s_i)):
     if gg[i] == 0:
@@ -200,28 +201,71 @@ for i in range(len(s_i)):
         P2D1[i] = P2D(mu2[-1], s_i[i], x_ed)                
 P2D1m = np.mean(P2D1, axis=0)
 sp5.plot(x_ed, nc_ed*P2D1m, 'r', linewidth=2)
-title5 = 'mu1=%.1f+/-%.1f, mu2=%.1f+/-%.1f \nLL=%d'  \
-            % (mu1[-1], mu_s1, mu2[-1], mu_s2, score[-1])
+title5 = 'mu1 = %.1f +/- %.1f (%d), mu2 = %.1f +/- %.1f (%d) \nLL = %d'  \
+            % (mu1[-1], mu_s1, N-sum(gg), mu2[-1], mu_s2, sum(gg), score12[-1])
 sp5.set_title(title5)
 
-
-# sp7. LogLikelihood plot
-sp7 = fig1.add_subplot(3,3,7)
-sp7.plot(mu_range, LL_si, 'k-')
-plt.title('LogLikelihood')
-
+# mu1 / mu2
+sp6 = fig1.add_subplot(3,4,6)
+sp7 = fig1.add_subplot(3,4,7)
+hist_1 = sp6.hist(r_i[gg==0], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+hist_2 = sp7.hist(r_i[gg==1], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+nc_1 = (N-sum(gg))*(hist_1[1][1] - hist_1[1][0])
+nc_2 = (sum(gg))*(hist_2[1][1] - hist_2[1][0])
+P2D_1 = np.zeros((N-sum(gg), len(x_ed)), dtype=float)
+P2D_2 = np.zeros((sum(gg), len(x_ed)), dtype=float)
+j = 0
+k = 0
+for i in range(N):
+    if gg[i] == 0:
+        P2D_1[j] = P2D(mu1[-1], s_i[i], x_ed); j += 1
+    else:
+        P2D_2[k] = P2D(mu2[-1], s_i[i], x_ed); k += 1                
+P2D_1m = np.mean(P2D_1, axis=0)
+P2D_2m = np.mean(P2D_2, axis=0)
+sp6.plot(x_ed, nc_1*P2D_1m, 'r', linewidth=2); sp6.set_title('mu1')
+sp7.plot(x_ed, nc_2*P2D_2m, 'r', linewidth=2); sp7.set_title('mu2')
 
 # sp8. mu1/m2 iteration
-sp8 = fig1.add_subplot(3,3,8)
-sp8.plot(mu1, 'r', mu2, 'b')
-sp8.axhline(y=mu[0], color='k', linewidth=0.5)
-sp8.axhline(y=mu[1], color='k', linewidth=0.5)
-sp8.axis([0, len(mu1), 0, max(max(mu1), max(mu2))*1.2])
-title8 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
+sp9 = fig1.add_subplot(3,4,8)
+sp9.plot(mu1, 'b', mu2, 'r')
+sp9.axhline(y=mu[0], color='k', linewidth=0.5)
+sp9.axhline(y=mu[1], color='k', linewidth=0.5)
+sp9.axis([0, len(mu1), 0, max(max(mu1), max(mu2))*1.2])
+title9 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
         % (mu1[-1], mu_s1, mu2[-1], mu_s2)
-sp8.set_title(title8)
+sp9.set_title(title9)
 
-plt.subplots_adjust(wspace=0.3, hspace=0.3)
+# sp8. score iteration
+sp8 = fig1.add_subplot(3,4,9)
+sp8.plot(score12, 'k')
+sp8.set_title('LogLikelihood')
+
+
+
+
+# sp10. group difference
+sp10 = fig1.add_subplot(3,4,10)
+sp10.plot(g_right_percent, 'k')
+sp10.axis([0, len(g_right_percent), 0, 100])
+title10 = 'Correct Group = %.1f %%' % (g_right_percent[-1])
+sp10.set_title(title10)
+
+
+# sp11. accept iteration
+sp11 = fig1.add_subplot(3,4,11)
+sp11.plot(np.array(accept)/num_iter*100, 'k')
+sp11.set_title('Cumulative acceptance (%)')
+
+
+# sp12.score difference
+sp12 = fig1.add_subplot(3,4,12)
+score_diff = np.array(score12[:-1]) - np.array(score12[1:]) 
+sp12.semilogy(score_diff, 'k.')
+sp12.set_title('Score difference')
+
+
+plt.subplots_adjust(wspace=0.3, hspace=0.5)
 plt.show()
 
 
@@ -248,33 +292,11 @@ sp3.set_title(title3)
 plt.xlabel('Euclidean distance')
 plt.ylabel('Sigma')
 
-
-
-# sp8. score iteration
+# sp7. LogLikelihood plot
 sp8 = fig1.add_subplot(3,4,8)
-sp8.plot(score, 'k')
-sp8.set_title('LogLikelihood')
+sp8.plot(mu_range, LL_si, 'k-')
+plt.title('LogLikelihood')
 
-
-# sp10. group difference
-sp10 = fig1.add_subplot(3,4,10)
-sp10.plot(g_diff_percent, 'k')
-sp10.axis([0, len(g_diff_percent), 0, 100])
-title10 = 'Group difference = %.1f %%' % (g_diff_percent[-1])
-sp10.set_title(title10)
-
-
-# sp11. accept iteration
-sp11 = fig1.add_subplot(3,4,11)
-sp11.plot(np.array(accept)/num_iter*100, 'k')
-sp11.set_title('Cumulative acceptance (%)')
-
-
-# sp12.score difference
-sp12 = fig1.add_subplot(3,4,12)
-score_diff = np.array(score[:-1]) - np.array(score[1:]) 
-sp12.semilogy(score_diff, 'k.')
-sp12.set_title('Score difference')
 """
 
 
