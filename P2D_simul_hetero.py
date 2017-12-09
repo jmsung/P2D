@@ -10,6 +10,7 @@ import scipy.special as sp
 from scipy.optimize import minimize 
 import random 
 from scipy.stats import gamma
+from scipy.stats import chisqprob
 
 # P2D(r|mu,s) = (r/s^2)*exp(-(mu^2+r^2)/(2*s^2))*I0(r*mu/s^2) Eq. (4)
 # I0 = Modified Bessel function of order 0.
@@ -30,11 +31,12 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     
 # Parameters
 mu = [5.0, 10.0]
-N_i = [500, 500]
-N = sum(N_i)
-num_iter = 3*N
-s_m = 7.0 # sigma mean
+s_m = 10.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
+N_i = [1000, 1000]
+N = sum(N_i)
+num_iter = 10*N
+prob = 0.01
 bin1d = 50
 bin2d = 20
 
@@ -50,11 +52,11 @@ for i in range(N):
 mu_m = np.mean(mu_i)
 mu_s = np.std(mu_i)
 mu_range = np.linspace(min(mu)-2, max(mu)+2, 100)
-
 s_shape = (s_m/s_s)**2.0
 s_scale = (s_s**2.0)/s_m
-s_i = np.random.gamma(s_shape, s_scale, N)
 
+# Generate data
+s_i = np.random.gamma(s_shape, s_scale, N)
 x_i = s_i * np.random.randn(N) + mu_i
 y_i = s_i * np.random.randn(N)  
 r_i = (x_i**2.0 + y_i**2.0)**0.5
@@ -77,14 +79,15 @@ accept = [0]
 g_right = [sum(group==gg)]
 
 for i in range(num_iter):
-#    pick = np.random.randint(N)
     pick = i%N
+#    pick = np.random.randint(N)
+
     gg_temp = gg.copy()
     if gg_temp[pick] == 0: 
         gg_temp[pick] = 1
     else: 
         gg_temp[pick] = 0
-    
+          
     r1 = r_i[gg_temp == 0]; s1 = s_i[gg_temp == 0]
     r2 = r_i[gg_temp == 1]; s2 = s_i[gg_temp == 1]
     
@@ -93,28 +96,39 @@ for i in range(num_iter):
 
     score12_temp = score1_temp + score2_temp
 
-    accept1 = score1_temp < score1[-1]
-    accept2 = score2_temp < score2[-1]
-    accept12 = score12_temp < score12[-1]
+    n1 = sum(gg == 0)
+    n2 = sum(gg == 1)
+    n1_temp = sum(gg_temp == 0)
+    n2_temp = sum(gg_temp == 1)
+    
+    accept1 = score1_temp < score1[-1]*n1_temp/n1
+    accept2 = score2_temp < score2[-1]*n2_temp/n2
+    accept12 = score12_temp < score1[-1]*n1_temp/n1 + score2[-1]*n2_temp/n2
    
-    if (accept12):
+    if (accept1 & accept2) | (np.random.rand() < prob):
         gg = gg_temp.copy()
         accept.append(accept[-1]+1)
         mu1.append(mu1_temp)
         mu2.append(mu2_temp)
+        score1.append(score1_temp)
+        score2.append(score2_temp)
         score12.append(score12_temp)
     else:
         accept.append(accept[-1])
         mu1.append(mu1[-1])
         mu2.append(mu2[-1])    
+        score1.append(score1[-1]) 
+        score2.append(score2[-1]) 
         score12.append(score12[-1])    
   
-    
     g_right_new = sum(group==gg)
     g_right.append(g_right_new)  
                                             
     if i%(num_iter/100) == 0:
         print(int(i/num_iter*100))
+
+# p-value
+p_value = chisqprob(2*(score0-score12[-1]), 2)
 
 # If mu1 and mu2 are swapped
 if mu1[-1] > mu2[-1]:
@@ -201,11 +215,12 @@ for i in range(len(s_i)):
         P2D1[i] = P2D(mu2[-1], s_i[i], x_ed)                
 P2D1m = np.mean(P2D1, axis=0)
 sp5.plot(x_ed, nc_ed*P2D1m, 'r', linewidth=2)
-title5 = 'mu1 = %.1f +/- %.1f (%d), mu2 = %.1f +/- %.1f (%d) \nLL = %d'  \
-            % (mu1[-1], mu_s1, N-sum(gg), mu2[-1], mu_s2, sum(gg), score12[-1])
+title5 = 'mu1 = %.1f +/- %.1f (%d), mu2 = %.1f +/- %.1f (%d) \n\
+        LL = %d (p-value = %e)'  \
+            % (mu1[-1], mu_s1, N-sum(gg), mu2[-1], mu_s2, sum(gg), score12[-1], p_value)
 sp5.set_title(title5)
 
-# mu1 / mu2
+# sp6, sp7. mu1 / mu2
 sp6 = fig1.add_subplot(3,4,6)
 sp7 = fig1.add_subplot(3,4,7)
 hist_1 = sp6.hist(r_i[gg==0], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
@@ -227,27 +242,25 @@ sp6.plot(x_ed, nc_1*P2D_1m, 'r', linewidth=2); sp6.set_title('mu1')
 sp7.plot(x_ed, nc_2*P2D_2m, 'r', linewidth=2); sp7.set_title('mu2')
 
 # sp8. mu1/m2 iteration
-sp9 = fig1.add_subplot(3,4,8)
-sp9.plot(mu1, 'b', mu2, 'r')
-sp9.axhline(y=mu[0], color='k', linewidth=0.5)
-sp9.axhline(y=mu[1], color='k', linewidth=0.5)
-sp9.axis([0, len(mu1), 0, max(max(mu1), max(mu2))*1.2])
-title9 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
+sp8 = fig1.add_subplot(3,4,8)
+sp8.plot(mu1, 'b', mu2, 'r')
+sp8.axhline(y=mu[0], color='k', linewidth=0.5)
+sp8.axhline(y=mu[1], color='k', linewidth=0.5)
+sp8.axis([0, len(mu1), 0, max(max(mu1), max(mu2))*1.2])
+title8 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
         % (mu1[-1], mu_s1, mu2[-1], mu_s2)
-sp9.set_title(title9)
+sp8.set_title(title8)
 
 # sp8. score iteration
-sp8 = fig1.add_subplot(3,4,9)
-sp8.plot(score12, 'k')
-sp8.set_title('LogLikelihood')
-
-
+sp9 = fig1.add_subplot(3,4,9)
+#sp9.plot(score1[1:], 'b', score2[1:], 'r')
+sp9.plot(score12[1:], 'k')
+sp9.set_title('LogLikelihood')
 
 
 # sp10. group difference
 sp10 = fig1.add_subplot(3,4,10)
 sp10.plot(g_right_percent, 'k')
-sp10.axis([0, len(g_right_percent), 0, 100])
 title10 = 'Correct Group = %.1f %%' % (g_right_percent[-1])
 sp10.set_title(title10)
 
