@@ -30,13 +30,13 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     return result
     
 # Parameters
-mu = [5.0, 10.0]
-s_m = 10.0 # sigma mean
+mu = [10.0, 20.0]
+s_m = 5.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
-N_i = [1000, 1000]
+N_i = [500, 500]
 N = sum(N_i)
 num_iter = 10*N
-prob = 0.01
+prob = 0.002
 bin1d = 50
 bin2d = 20
 
@@ -251,12 +251,10 @@ title8 = 'mu1 = %.1f +/- %.1f, mu2 = %.1f +/- %.1f' \
         % (mu1[-1], mu_s1, mu2[-1], mu_s2)
 sp8.set_title(title8)
 
-# sp8. score iteration
+# sp9. score iteration
 sp9 = fig1.add_subplot(3,4,9)
-#sp9.plot(score1[1:], 'b', score2[1:], 'r')
 sp9.plot(score12[1:], 'k')
 sp9.set_title('LogLikelihood')
-
 
 # sp10. group difference
 sp10 = fig1.add_subplot(3,4,10)
@@ -264,19 +262,16 @@ sp10.plot(g_right_percent, 'k')
 title10 = 'Correct Group = %.1f %%' % (g_right_percent[-1])
 sp10.set_title(title10)
 
-
 # sp11. accept iteration
 sp11 = fig1.add_subplot(3,4,11)
 sp11.plot(np.array(accept)/num_iter*100, 'k')
 sp11.set_title('Cumulative acceptance (%)')
-
 
 # sp12.score difference
 sp12 = fig1.add_subplot(3,4,12)
 score_diff = np.array(score12[:-1]) - np.array(score12[1:]) 
 sp12.semilogy(score_diff, 'k.')
 sp12.set_title('Score difference')
-
 
 plt.subplots_adjust(wspace=0.3, hspace=0.5)
 plt.show()
