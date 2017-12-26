@@ -1,5 +1,5 @@
 
-# Simulate P2D in Churchman papep (Jongmin Sung)
+# Simulate P2D in Churchman paper (Jongmin Sung)
 
 from __future__ import division, print_function, absolute_import
 import numpy as np
@@ -21,7 +21,7 @@ def Loglike_P2D_mu_s(param, r):
 def P2D_MLE_mu_s(mu, s, r): # original P2D MLE
     fun = lambda *args: -Loglike_P2D_mu_s(*args)
 #    p0 = [10*mu*np.random.rand(), 10*st*np.random.rand()]
-    p0 = [1, 1]
+    p0 = [3, 10]
     bnds = [(0.001, 2*mu), (0.001, 2*st)]
     result = minimize(fun, p0, method='SLSQP', bounds=bnds, args=r)
 #    print(result["x"]); print(result["success"])
@@ -34,7 +34,7 @@ def Loglike_P2D_mu(param, s, r):
 def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
     fun = lambda *args: -Loglike_P2D_mu(*args)
 #    p0 = [10*mu*np.random.rand()]
-    p0 = [1]
+    p0 = [3]
     bnds = [(0.001, 2*mu)]
     result = minimize(fun, p0, method='SLSQP', bounds=bnds, args=(s, r)) 
 #    print(result["x"]); print(result["success"])
@@ -42,13 +42,13 @@ def P2D_MLE_mu(mu, s, r): # P2D MLE with fixed mean sigma
     
 
 # Parameters
-mu = 8.6 
-sm = 7.9 # sigma mean
-ss = 2.8 # sigma sigma
+mu = 10.0 
+sm = 11.0 # sigma mean
+ss = sm/30.0 # sigma sigma
 st = (sm**2 + ss**2)**0.5
-N = 100
+N = 10000
 
-sm_range = np.arange(1, 11, 2)
+sm_range = np.arange(10, 13, 1)
 repeat = 100
 
 # Get a dataset 
@@ -151,7 +151,7 @@ for sm in sm_range:
     su0 = []; su1 = []; su2 = []; su3 = [];
     
     for i in range(repeat):
-        ss = sm/3.0 # sigma sigma
+        ss = sm/30.0 # sigma sigma
         st = (sm**2 + ss**2)**0.5
         shape = (sm/ss)**2.0
         scale = (ss**2.0)/sm
@@ -172,11 +172,9 @@ for sm in sm_range:
     mu3r[:,j] = [np.nanmean(mu3), np.nanstd(mu3), sum(su3)/repeat*100]
     j+=1
     
-    print(sm)
     done = sm/max(sm_range)*100
     now = time.clock()
     spent = (now-start)/60 # time passed in min
-    print(spent)
     print(spent*(100-done)/done)
   
     
@@ -184,26 +182,26 @@ fig3 = plt.figure(3)
 sp31 = fig3.add_subplot(241); 
 sp31.errorbar(x=sm_range, y=mu0r[0], yerr=mu0r[1], color='k'); 
 sp31.axhline(y=mu, color='k', linewidth=0.5)
-sp31.axis([min(sm_range)-1, max(sm_range)+1, 5, 15])
-sp31.set_title('mu=%.1f (init=1), repeat=%d, particle=%d  \nP2D MLE' % (mu, repeat, N))
+sp31.axis([min(sm_range)-1, max(sm_range)+1, 0, 15])
+sp31.set_title('mu=%.1f (init=3), repeat=%d, particle=%d  \nP2D MLE' % (mu, repeat, N))
 sp31.set_ylabel('Estimation of mu')
 
 sp32 = fig3.add_subplot(242); 
 sp32.errorbar(x=sm_range, y=mu1r[0], yerr=mu1r[1], color='g'); 
 sp32.axhline(y=mu, color='k', linewidth=0.5)
-sp32.axis([min(sm_range)-1, max(sm_range)+1, 5, 15])
+sp32.axis([min(sm_range)-1, max(sm_range)+1, 0, 15])
 sp32.set_title('P2D MLE, fixed sigma_mean')
 
 sp33 = fig3.add_subplot(243); 
 sp33.errorbar(x=sm_range, y=mu2r[0], yerr=mu2r[1], color='b'); 
 sp33.axhline(y=mu, color='k', linewidth=0.5)
-sp33.axis([min(sm_range)-1, max(sm_range)+1, 5, 15])
+sp33.axis([min(sm_range)-1, max(sm_range)+1, 0, 15])
 sp33.set_title('P2D MLE, fixed sigma_total')
 
 sp34 = fig3.add_subplot(244); 
 sp34.errorbar(x=sm_range, y=mu3r[0], yerr=mu3r[1], color='r'); 
 sp34.axhline(y=mu, color='k', linewidth=0.5)
-sp34.axis([min(sm_range)-1, max(sm_range)+1, 5, 15])
+sp34.axis([min(sm_range)-1, max(sm_range)+1, 0, 15])
 sp34.set_title('P2D MLE, fixed sigma_individual')
 
 sp35 = fig3.add_subplot(245); 
@@ -230,7 +228,6 @@ sp38.plot(sm_range, mu3r[2], 'ro')
 sp38.axhline(y=100, color='k', linewidth=0.5)
 sp38.axis([min(sm_range)-1, max(sm_range)+1, 0, 110])
 sp38.set_xlabel('Sigma_mean')
-
 
 
 
