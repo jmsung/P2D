@@ -31,12 +31,12 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     
 # Parameters
 mu = [5.0, 10.0]
-s_m = 10.0 # sigma mean
+s_m = 5.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
-N_i = [1000, 1000]
+N_i = [500, 500]
 N = sum(N_i)
 num_iter = 5*N
-prob = 0.0000001
+prob = 0.00001
 bin1d = 50
 bin2d = 20
 
@@ -77,7 +77,6 @@ for i in range(len(r_i)):
         gg.append(0)
     else:
         gg.append(1)
-    
 gg = np.array(gg)
     
 mu1 = [mu0]
@@ -90,7 +89,6 @@ g_right = [sum(group==gg)]
 
 for i in range(num_iter):
     pick = i%N
-#    pick = np.random.randint(N)
 
     gg_temp = gg.copy()
     if gg_temp[pick] == 0: 
@@ -109,14 +107,13 @@ for i in range(num_iter):
     n1_temp = sum(gg_temp == 0)
     n2_temp = sum(gg_temp == 1)
 
+
     score12_temp = score1_temp + score2_temp
     
-    accept1 = score1_temp/(n1_temp) < score1[-1]/(n1)
-    accept2 = score2_temp/(n2_temp) < score2[-1]/(n2)
-    accept12 = score1_temp/n1_temp + score2_temp/n2_temp < score1[-1]/n1 + score2[-1]/n2
+    accept1 = score1_temp/n1_temp < score1[-1]/n1 
+    accept2 = score2_temp/n2_temp < score2[-1]/n2 
    
-    if (accept1 & accept2) | (np.random.rand() < prob):
-#    if (accept12) | (np.random.rand() < prob):
+    if (accept1 & accept2) :       
         gg = gg_temp.copy()
         accept.append(accept[-1]+1)
         mu1.append(mu1_temp)
