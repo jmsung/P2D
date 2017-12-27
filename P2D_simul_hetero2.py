@@ -30,13 +30,13 @@ def MLE(mu, s, r): # P2D MLE with fixed mean sigma
     return result
     
 # Parameters
-mu = [10.0, 20.0]
-s_m = 5.0 # sigma mean
+mu = [5.0, 10.0]
+s_m = 10.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
-N_i = [100, 100]
+N_i = [1000, 1000]
 N = sum(N_i)
-num_iter = 10*N
-prob = 0.002
+num_iter = 5*N
+prob = 0.0000001
 bin1d = 50
 bin2d = 20
 
@@ -67,9 +67,19 @@ result0 = MLE(mu_m, s_i, r_i); mu0 = result0["x"]; score0 = result0["fun"]
 ################################################################################
 # MC search for multiple conformation
 ################################################################################
-gg1 = np.array([0]*int(N/2))
-gg2 = np.array([1]*(N-int(N/2)))
-gg = np.concatenate((gg1, gg2))
+#gg1 = np.array([0]*int(N/2))
+#gg2 = np.array([1]*(N-int(N/2)))
+#gg = np.concatenate((gg1, gg2))
+
+gg = []
+for i in range(len(r_i)):
+    if r_i[i] < np.median(r_i):
+        gg.append(0)
+    else:
+        gg.append(1)
+    
+gg = np.array(gg)
+    
 mu1 = [mu0]
 mu2 = [mu0]
 score1 = [score0]
@@ -88,24 +98,25 @@ for i in range(num_iter):
     else: 
         gg_temp[pick] = 0
           
-    r1 = r_i[gg_temp == 0]; s1 = s_i[gg_temp == 0]
-    r2 = r_i[gg_temp == 1]; s2 = s_i[gg_temp == 1]
+    r1_temp = r_i[gg_temp == 0]; s1_temp = s_i[gg_temp == 0]
+    r2_temp = r_i[gg_temp == 1]; s2_temp = s_i[gg_temp == 1]
     
-    result1 = MLE(mu1[-1], s1, r1); mu1_temp = result1["x"]; score1_temp = result1["fun"]
-    result2 = MLE(mu2[-1], s2, r2); mu2_temp = result2["x"]; score2_temp = result2["fun"]
-
-    score12_temp = score1_temp + score2_temp
+    result1 = MLE(mu1[-1], s1_temp, r1_temp); mu1_temp = result1["x"]; score1_temp = result1["fun"]
+    result2 = MLE(mu2[-1], s2_temp, r2_temp); mu2_temp = result2["x"]; score2_temp = result2["fun"]
 
     n1 = sum(gg == 0)
     n2 = sum(gg == 1)
     n1_temp = sum(gg_temp == 0)
     n2_temp = sum(gg_temp == 1)
+
+    score12_temp = score1_temp + score2_temp
     
-    accept1 = score1_temp < score1[-1]*n1_temp/n1
-    accept2 = score2_temp < score2[-1]*n2_temp/n2
-    accept12 = score12_temp < score1[-1]*n1_temp/n1 + score2[-1]*n2_temp/n2
+    accept1 = score1_temp/(n1_temp) < score1[-1]/(n1)
+    accept2 = score2_temp/(n2_temp) < score2[-1]/(n2)
+    accept12 = score1_temp/n1_temp + score2_temp/n2_temp < score1[-1]/n1 + score2[-1]/n2
    
     if (accept1 & accept2) | (np.random.rand() < prob):
+#    if (accept12) | (np.random.rand() < prob):
         gg = gg_temp.copy()
         accept.append(accept[-1]+1)
         mu1.append(mu1_temp)
@@ -223,16 +234,16 @@ sp5.set_title(title5)
 # sp6, sp7. mu1 / mu2
 sp6 = fig1.add_subplot(3,4,6)
 sp7 = fig1.add_subplot(3,4,7)
-hist_1 = sp6.hist(r_i[gg==0], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-hist_2 = sp7.hist(r_i[gg==1], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
-nc_1 = (N-sum(gg))*(hist_1[1][1] - hist_1[1][0])
-nc_2 = (sum(gg))*(hist_2[1][1] - hist_2[1][0])
-P2D_1 = np.zeros((N-sum(gg), len(x_ed)), dtype=float)
-P2D_2 = np.zeros((sum(gg), len(x_ed)), dtype=float)
+hist_1 = sp6.hist(r_i[group==0], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+hist_2 = sp7.hist(r_i[group==1], bins='scott', normed=False, color='k', histtype='step', linewidth=2)
+nc_1 = (N-sum(group))*(hist_1[1][1] - hist_1[1][0])
+nc_2 = (sum(group))*(hist_2[1][1] - hist_2[1][0])
+P2D_1 = np.zeros((N-sum(group), len(x_ed)), dtype=float)
+P2D_2 = np.zeros((sum(group), len(x_ed)), dtype=float)
 j = 0
 k = 0
 for i in range(N):
-    if gg[i] == 0:
+    if group[i] == 0:
         P2D_1[j] = P2D(mu1[-1], s_i[i], x_ed); j += 1
     else:
         P2D_2[k] = P2D(mu2[-1], s_i[i], x_ed); k += 1                
@@ -264,8 +275,8 @@ sp10.set_title(title10)
 
 # sp11. accept iteration
 sp11 = fig1.add_subplot(3,4,11)
-sp11.plot(np.array(accept)/num_iter*100, 'k')
-sp11.set_title('Cumulative acceptance (%)')
+sp11.plot(np.array(accept), 'k')
+sp11.set_title('Cumulative acceptance')
 
 # sp12.score difference
 sp12 = fig1.add_subplot(3,4,12)
