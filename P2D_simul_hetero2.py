@@ -35,7 +35,7 @@ s_m = 5.0 # sigma mean
 s_s = s_m/3.0 # sigma sigma
 N_i = [500, 500]
 N = sum(N_i)
-num_iter = 5*N
+num_iter = 10*N
 prob = 0.00001
 bin1d = 50
 bin2d = 20
@@ -88,13 +88,12 @@ accept = [0]
 g_right = [sum(group==gg)]
 
 for i in range(num_iter):
-    pick = i%N
+    pick1 = np.random.choice(np.where(gg==0)[0], size=1)[0]
+    pick2 = np.random.choice(np.where(gg==1)[0], size=1)[0]
 
     gg_temp = gg.copy()
-    if gg_temp[pick] == 0: 
-        gg_temp[pick] = 1
-    else: 
-        gg_temp[pick] = 0
+    gg_temp[pick1] = 1
+    gg_temp[pick2] = 0
           
     r1_temp = r_i[gg_temp == 0]; s1_temp = s_i[gg_temp == 0]
     r2_temp = r_i[gg_temp == 1]; s2_temp = s_i[gg_temp == 1]
