@@ -15,7 +15,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special as sp
-from scipy.optimize import minimize 
+from scipy.optimize import minimize, fmin 
 from scipy.stats import gamma
 from scipy.stats import chisqprob
 import scipy.integrate as integrate
@@ -25,19 +25,30 @@ import time
 pi = 3.141592
 num_min = 1e-100
 num_bin = 50
+color = ['b', 'g', 'r', 'c', 'm', 'y', 'b', 'g', 'r', 'c', 'm', 'y', 'b', 'g', 'r', 'c', 'm', 'y']
 
-def LL(m, s, r):
-    "LogLikelihood "   
-    LL = np.sum(np.log10(P2D(m, s, r)))
-    return LL
-    
-def MLE(m, s, r): 
-    "P2D MLE with fixed mean sigma"
-    fun = lambda *args: -LL(*args)
+  
+def MLE(m, s, r): # P2D with fixed mean sigma
+    fun = lambda *args: LL_fit(*args)
     p0 = [m]
     result = minimize(fun, p0, method='SLSQP', args=(s, r)) 
-    return result
-
+    LL = result["fun"]
+    m = result["x"]
+    return LL, m
+    
+def LL_fit(m, s, r):
+    "Negative LogLikelihood per molecule"   
+    return -np.sum(np.log10(P2D(m, s, r)))/len(r)
+    
+def LL(m, s, r):
+    "Negative LogLikelihood per molecule"  
+    m = np.array(m)
+    s = np.array(s)
+    i1 = m > 10*s
+    i2 = np.invert(i1)
+    LL1 = np.sum(np.log10(P2D_approx(m[i1], s[i1], r[i1])))
+    LL2 = np.sum(np.log10(P2D(m[i2], s[i2], r[i2])))
+    return -(LL1 + LL2)/len(m)
 
 def P2D(m, s, r): 
     """P2D(r|m,s) = (r/s^2)*exp(-(m^2+r^2)/(2*s^2))*I0(r*m/s^2) Eq. (4)
@@ -66,13 +77,17 @@ def P2D_generate(m, s, N):
     pdf = pdf/sum(pdf)
     return np.random.choice(r, size=N, p=pdf).tolist()
     
-
 def sigma_generate(m, s, N):
     "Generate N random variable of sigma from gamma distribution"
     shape = (m/s)**2.0
     scale = (s**2.0)/m
     return np.random.gamma(shape, scale, size=N).tolist()
-                
+ 
+def RMSD(x, y):
+    x = np.array(x)
+    y = np.array(y)
+    return (np.mean((x-y)**2))**0.5                
+                                              
 # Class Mol 
 class Mol(object):
     def __init__(self, m, s, i):
@@ -84,8 +99,7 @@ class Mol(object):
         self.x = np.random.normal(self.x0, self.s)
         self.y = np.random.normal(self.y0, self.s)        
         self.r = (self.x**2.0 + self.y**2.0)**0.5
-
-                                                
+                                              
 # Class Sample with multiple molecules    
 class Sample(object):
     def __init__(self, groups):
@@ -128,27 +142,24 @@ class Sample(object):
                 g['x'] += [mol.x]
                 g['y'] += [mol.y]
                 g['r'] += [mol.r]    
-                   
+                  
             self.g += [i]         
             self.m += g['m']
             self.s += g['s']
             self.x += g['x']
             self.y += g['y']
             self.r += g['r']          
-                         
-        self.m_max, self.m_min = max(self.m), min(self.m)
-        self.s_max, self.s_min = max(self.s), min(self.s)
-        self.x_max, self.x_min = max(self.x), min(self.x)
-        self.y_max, self.y_min = max(self.y), min(self.y)        
-        self.r_max, self.r_min = max(self.r), min(self.r)                                       
+
+        self.n_mols = len(self.m)                            
+                                
                                                                                                                
     def plot_result(self):
         plt.close('all')
         self.fig1 = plt.figure(1)
         
         # Distribution of mu
-        sp = self.fig1.add_subplot(231) 
-        bins = np.linspace(self.m_min, self.m_max, num_bin)
+        sp = self.fig1.add_subplot(241) 
+        bins = np.linspace(min(self.m), max(self.m), num_bin)
         for i in range(self.N_group):   
             g = self.group[i]
             sp.hist(g['m'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
@@ -156,8 +167,8 @@ class Sample(object):
         sp.set_title('Mu')
                       
         # Distribution of sigma
-        sp = self.fig1.add_subplot(232) 
-        bins = np.linspace(self.s_min, self.s_max, num_bin)
+        sp = self.fig1.add_subplot(242) 
+        bins = np.linspace(min(self.s), max(self.s), num_bin)
         for i in range(self.N_group):   
             g = self.group[i]
             sp.hist(g['s'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
@@ -165,68 +176,140 @@ class Sample(object):
         sp.set_title('Sigma')
 
         # Distributio of r
-        sp = self.fig1.add_subplot(233)
-        bins = np.linspace(self.r_min, self.r_max, num_bin)
+        sp = self.fig1.add_subplot(243)
+        bins = np.linspace(min(self.r), max(self.r), num_bin)
         for i in range(self.N_group):   
             g = self.group[i]
             sp.hist(g['r'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
         sp.hist(self.r, bins, normed=False, color='k', histtype='step', linewidth=1)
         sp.set_title('Euclidean distance')
-        
-        # Estimation of Mu
-        sp = self.fig1.add_subplot(234)
-        bins = np.linspace(self.r_min, self.r_max, num_bin)
-        sp.hist(self.m, bins, normed=False, color='k', histtype='step', linewidth=1)  
-        sp.hist(self.m_guess, bins, normed=False, color='r', histtype='step', linewidth=1)    
-        sp.set_title('Mu estimation')        
-        
-        # Distribution of mu
-        sp = self.fig1.add_subplot(235)
-        sp.plot(self.LL_iter[1:], 'k')
-        sp.set_title('LL')
-        
-        sp = self.fig1.add_subplot(236)
-        sp.plot(self.dm, 'k')
-        i_min = np.argmin(self.dm)
-        sp.plot(i_min, self.dm[i_min], 'r.', markersize = 20)     
-        sp.set_title('Mu difference')
-        
-        self.fig1.tight_layout()
-        self.fig1.subplots_adjust(wspace=0.1, hspace=0.3)       
-           
-                      
-                                            
-    def analyze_data(self):
-        self.n_data = len(self.m)
-        self.n_iter = self.n_data*10
 
-        m_bin = np.linspace(self.r_min+1, self.r_max, num_bin)
-        self.m_guess = np.random.choice(m_bin, size=self.n_data)           
-        LL_iter = [1e100] 
-        dm = []
-  
-        start = time.clock()
-        for i in range(self.n_iter):
-            m_temp = self.m_guess.copy()
-            m_temp[i%self.n_data] = np.random.choice(m_bin[1:], size=1) 
-            LL_temp = -LL(m_temp, np.array(self.s), np.array(self.r))/self.n_data
-            if LL_temp < LL_iter[-1]:
-                LL_iter += [LL_temp]
-                self.m_guess = m_temp
-            else:
-                LL_iter += [LL_iter[-1]]
-            dm += [np.sum(np.abs(np.array(self.m_guess) - np.array(self.m)))/self.n_data]
+        # Distributio of r
+        sp = self.fig1.add_subplot(244)
+        bins = np.linspace(min(self.r), max(self.r), num_bin)
+        sp.hist(self.r, bins, normed=False, color='k', histtype='step', linewidth=1)
+        sp.set_title('Euclidean distance')                                        
+                                                                                                                        
+        # Estimation of M2
+        sp = self.fig1.add_subplot(245)
+        bins = np.linspace(min(self.m + list(self.m_guess2)), max(self.m + list(self.m_guess2)), num_bin)
+        sp.hist(self.m, bins, normed=False, color='k', histtype='step', linewidth=1)  
+        sp.hist(self.m_guess2, bins, normed=False, color='r', histtype='step', linewidth=1)    
+        sp.set_title('Mu estimation')  
+
+        # LL2 change over iteration
+        sp = self.fig1.add_subplot(246)
+        sp.plot(self.LL_iter2, 'k')
+        sp.set_title('Negative LogLikelihood')
+        
+        # RMSD2 (Mu_estimate) over iteration
+        sp = self.fig1.add_subplot(247)
+        sp.plot(self.dm2, 'k')
+        i_min = np.argmin(self.dm2)
+        sp.plot(i_min, self.dm2[i_min], 'r.', markersize = 20)     
+        sp.set_title('RMSD of Mu_estimate')
+
+        sp = self.fig1.add_subplot(248) 
+        for j in range(self.N_group):
+            m_m = self.group[j]['m_m']
+            m_s = self.group[j]['m_s']
+            sp.axhline(y = m_m, color='k')
+            sp.axhline(y = m_m + m_s, color='k', ls='dashed')
+            sp.axhline(y = m_m - m_s, color='k', ls='dashed')                
+        for j in range(self.n_conf):
+            sp.plot(self.mc2[:,j], color=color[j], lw=2)
             
-            done = (i+1)/self.n_iter*100
+        self.fig1.tight_layout()
+        self.fig1.subplots_adjust(wspace=0.2, hspace=0.4)    
+
+    def analyze_data(self):
+        "MLE with multiple conformations. Exchange conformation guess and evaluate LL"
+        start = time.clock()
+        n_mols = self.n_mols
+        self.n_conf = 5
+        n_iter = int(n_mols)*self.n_conf*10
+        m = np.array(self.m)
+        s = np.array(self.s)
+        r = np.array(self.r)
+
+        # Initial guess of conf and m, based on r. Similar r are grouped together. 
+        c_guess = np.zeros(n_mols)
+        m_guess = np.zeros(n_mols)    
+        r_bin = np.linspace(min(r), max(r), self.n_conf)
+        dr = (r_bin[1]-r_bin[0])/2
+
+        for i in range(self.n_conf):
+            j = (r > r_bin[i] - dr) & (r < r_bin[i] + dr)
+            c_guess[j] = i
+            m_guess[j] = np.mean(r[j])
+
+        LL_init = 0
+        mc_init = []
+        mc_iter = []
+        for i in range(self.n_conf): 
+            k = i == c_guess # k = mols in i_th conformation 
+            LL_k, m_k = MLE(np.mean(m_guess[k]), s[k], r[k])
+            LL_init += LL_k
+            mc_init.append(m_k)
+            m_guess[k] = m_k
+
+        LL_iter = [LL_init] # LL change over iteration
+        dm_iter = [RMSD(m_guess, m)] # RMSD of (m and m_guess) over iteration        
+        mc_iter.append(mc_init) # Mu of each conformation over iteration   
+
+        for i in range(n_iter): # i = current iteration
+            j  = i%n_mols # j = mol to update conformation
+            c1 = c_guess[j] # conformation (c1) of jth mol before change
+            c2_possible = list(range(self.n_conf))
+            c2_possible.remove(c1)
+            c2 = np.random.choice(c2_possible, size=1) # New conformation (c2) for j-mol 
+
+            c1_before = c1 == c_guess # Mols in c1 before changing
+            c1_after = c1_before.copy()
+            c1_after[j] = False # Mols in c1 after changing
+
+            c2_before = c2 == c_guess # Mols in c2 before changing
+            c2_after = c2_before.copy()
+            c2_after[j] = True # Mols in c2 after changing 
+
+            LL1_before, m1_before = MLE(np.mean(m[c1_before]), s[c1_before], r[c1_before])
+            LL1_after,  m1_after  = MLE(np.mean(m[c1_after]),  s[c1_after],  r[c1_after])
+            LL2_before, m2_before = MLE(np.mean(m[c2_before]), s[c2_before], r[c2_before])
+            LL2_after,  m2_after  = MLE(np.mean(m[c2_after]),  s[c2_after],  r[c2_after])
+                                
+            # Accept update if LL increases with both conformational groups                   
+            if (LL1_before + LL2_before > LL1_after + LL2_after):   
+#            if (LL1_before > LL1_after) & (LL2_before > LL2_after):                  
+                c_guess[j] = c2 # Update new conformation (c2) of j-mol 
+                LL_new = 0
+                mc_new = []
+                for cf in range(self.n_conf): # cf = conformation of interest 
+                    k = cf == c_guess # k = mols in cf conformation 
+                    LL_k, m_k = MLE(np.mean(m_guess[k]), s[k], r[k])
+                    LL_new += LL_k
+                    mc_new.append(m_k)
+                    m_guess[k] = m_k
+                LL_iter += [LL_new]
+                dm_iter += [RMSD(m_guess, m)]                
+                mc_iter.append(mc_new)                 
+
+            else:
+                LL_iter += [LL_iter[-1]]       
+                dm_iter += [RMSD(m_guess, m)]
+                mc_iter.append(mc_iter[-1])
+    
+            done = (i+1)/n_iter*100
             if done%10 == 0:
                 now = time.clock()
                 spent = (now-start)/60 # time passed in min
                 print('%d %%, %.1f min' %(done, (spent*(100-done)/done)))
-                
-        self.LL_iter = np.array(LL_iter)
-        self.dm = np.array(dm)
-                
-   
+               
+        self.LL_iter2 = np.array(LL_iter)
+        self.dm2 = np.array(dm_iter)
+        self.mc2 = np.array(mc_iter)
+        self.m_guess2 = m_guess
+        self.c_guess2 = c_guess
+        
 
 # Parameters [N, m_m, m_s, s_m, s_s, c]
 # N: Number of particle
@@ -236,9 +319,9 @@ class Sample(object):
 # s_m: sigma, std
 # c: color
 
-g1 = {'N':2000, 'm_m':10, 'm_s':5, 's_m':1, 's_s':0.1, 'c':'b'}
-g2 = {'N':2000, 'm_m':20, 'm_s':5, 's_m':1, 's_s':0.1, 'c':'r'}
-groups = [g1, g2]
+g1 = {'N':2000, 'm_m':10, 'm_s': 2, 's_m':0.3, 's_s':0.1, 'c':color[0]}
+g2 = {'N':1000, 'm_m':15, 'm_s': 0.1, 's_m':3, 's_s':1, 'c':color[1]}
+groups = [g1]
 
 sample = Sample(groups)
 sample.generate_data()
@@ -247,33 +330,73 @@ sample.plot_result()
 
 plt.show()
 
+"""
+        # Estimation of Mu1
+        sp = self.fig1.add_subplot(345)
+        bins = np.linspace(min(self.r), max(self.r), num_bin)
+        sp.hist(self.m, bins, normed=False, color='k', histtype='step', linewidth=1)  
+        sp.hist(self.m_guess1, bins, normed=False, color='r', histtype='step', linewidth=1)    
+        sp.set_title('Mu estimation')        
+        
+        # LL1 change over iteration
+        sp = self.fig1.add_subplot(346)
+        sp.plot(self.LL_iter1, 'k')
+        sp.set_title('Negative LogLikelihood')
+        
+        # RMSD1 (Mu_estimate) over iteration
+        sp = self.fig1.add_subplot(347)
+        sp.plot(self.dm1, 'k')
+        i_min = np.argmin(self.dm1)
+        sp.plot(i_min, self.dm1[i_min], 'r.', markersize = 20)     
+        sp.set_title('RMSD of Mu_estimate')    
+
+                                                                                                                                                                                                       
+    def analyze_data1(self):
+        "Iteratively Gaussian sample new mu of each molecule and accept if LL increases."
+        n_mols = self.n_mols
+        n_iter = int(n_mols*10)
+        r = np.array(self.r)
+        s = np.array(self.s)
+        m = np.array(self.m)
+
+        m_bin = np.linspace(min(r), max(r), num_bin)
+        m_guess = np.random.choice(m_bin, size=n_mols)  
+        step = np.mean(r)         
+        LL_iter = [1e100] 
+        dm = []
+  
+        start = time.clock()
+        for i in range(n_iter):
+            m_temp = m_guess.copy()
+            m_temp[i%n_mols] = min(max(m_temp[i%n_mols] + np.random.randn(1)*step, 0), max(r))
+            LL_temp = LL(m_temp, np.array(s), np.array(r))
+            if LL_temp < LL_iter[-1]:
+                LL_iter += [LL_temp]
+                m_guess = m_temp
+            else:
+                LL_iter += [LL_iter[-1]]
+            dm += [RMSD(m_guess, m)]
+            
+            done = (i+1)/n_iter*100
+            if done%10 == 0:
+                now = time.clock()
+                spent = (now-start)/60 # time passed in min
+                print('%d %%, %.1f min' %(done, (spent*(100-done)/done)))
+                
+        self.LL_iter1 = np.array(LL_iter[1:])
+        self.dm1 = np.array(dm)
+        self.m_guess1 = m_guess
+
+
 
 """
-        # Scatter plot of the groups
-        sp = self.fig1.add_subplot(333) 
-        for i in range(self.N_group):   
-            g = self.group[i]
-            c = g['c']
-            sp.plot(g['x'], g['y'], c+'.', markersize=1, alpha=0.5)
-        sp.axvline(x=0, color='k', linewidth=0.5)
-        sp.axhline(y=0, color='k', linewidth=0.5)
-        sp.set_aspect('equal')
 
-        # Distribution in x
-        sp = self.fig1.add_subplot(334)
-        bins = np.linspace(self.x_min, self.x_max, num_bin)
-        for i in range(self.N_group):   
-            g = self.group[i]
-            sp.hist(g['x'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
-        sp.hist(self.x, bins, normed=False, color='k', histtype='step', linewidth=1)
-        sp.set_title('X localization')        
 
-        # Distribution in y
-        sp = self.fig1.add_subplot(335)
-        bins = np.linspace(self.y_min, self.y_max, num_bin)
-        for i in range(self.N_group):   
-            g = self.group[i]
-            sp.hist(g['y'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
-        sp.hist(self.y, bins, normed=False, color='k', histtype='step', linewidth=1)
-        sp.set_title('Y localization')   
-"""    
+
+
+
+
+
+
+
+
