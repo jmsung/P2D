@@ -15,10 +15,8 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special as sp
-from scipy.optimize import minimize, fmin 
-from scipy.stats import gamma
+from scipy.optimize import minimize
 from scipy.stats import chisqprob
-import scipy.integrate as integrate
 import random 
 import time
 
@@ -160,36 +158,46 @@ class Sample(object):
         # Distribution of mu
         sp = self.fig1.add_subplot(241) 
         bins = np.linspace(min(self.m), max(self.m), num_bin)
+        m = ''
         for i in range(self.N_group):   
             g = self.group[i]
             sp.hist(g['m'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
+            m += '(%.1f +/- %.1f) ' %(g['m_m'], g['m_s'])            
         sp.hist(self.m, bins, normed=False, color='k', histtype='step', linewidth=1)
-        sp.set_title('Mu')
+        title = 'Mu = %s' % (m)
+        sp.set_title(title)
                       
         # Distribution of sigma
         sp = self.fig1.add_subplot(242) 
         bins = np.linspace(min(self.s), max(self.s), num_bin)
+        s = ''
         for i in range(self.N_group):   
             g = self.group[i]
             sp.hist(g['s'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
+            s += '(%.1f +/- %.1f) ' %(g['s_m'], g['s_s'])   
         sp.hist(self.s, bins, normed=False, color='k', histtype='step', linewidth=1)
-        sp.set_title('Sigma')
+        title = 'Sigma = %s' % (s)
+        sp.set_title(title)
 
         # Distributio of r
         sp = self.fig1.add_subplot(243)
         bins = np.linspace(min(self.r), max(self.r), num_bin)
+        N = ''
         for i in range(self.N_group):   
             g = self.group[i]
             sp.hist(g['r'], bins, normed=False, color=g['c'], histtype='step', linewidth=1)
+            N += '(%d) ' %(g['N']) 
         sp.hist(self.r, bins, normed=False, color='k', histtype='step', linewidth=1)
-        sp.set_title('Euclidean distance')
+        title = 'Euclidean distance, N = %s ' % (N)
+        sp.set_title(title)
 
         # Distributio of r
         sp = self.fig1.add_subplot(244)
         bins = np.linspace(min(self.r), max(self.r), num_bin)
         sp.hist(self.r, bins, normed=False, color='k', histtype='step', linewidth=1)
         sp.set_title('Euclidean distance')                                        
-                                                                                                                        
+                                                                  
+                                                                                                                                                                              
         # Estimation of M2
         sp = self.fig1.add_subplot(245)
         bins = np.linspace(min(self.m + list(self.m_guess2)), max(self.m + list(self.m_guess2)), num_bin)
@@ -226,8 +234,8 @@ class Sample(object):
         "MLE with multiple conformations. Exchange conformation guess and evaluate LL"
         start = time.clock()
         n_mols = self.n_mols
-        self.n_conf = 5
-        n_iter = int(n_mols)*self.n_conf*10
+        self.n_conf = 2
+        n_iter = int(n_mols)*5
         m = np.array(self.m)
         s = np.array(self.s)
         r = np.array(self.r)
@@ -236,7 +244,10 @@ class Sample(object):
         c_guess = np.zeros(n_mols)
         m_guess = np.zeros(n_mols)    
         r_bin = np.linspace(min(r), max(r), self.n_conf)
-        dr = (r_bin[1]-r_bin[0])/2
+        if self.n_conf > 1:
+            dr = (r_bin[1]-r_bin[0])/2
+        else:
+            dr = max(r) - min(r)
 
         for i in range(self.n_conf):
             j = (r > r_bin[i] - dr) & (r < r_bin[i] + dr)
@@ -256,6 +267,14 @@ class Sample(object):
         LL_iter = [LL_init] # LL change over iteration
         dm_iter = [RMSD(m_guess, m)] # RMSD of (m and m_guess) over iteration        
         mc_iter.append(mc_init) # Mu of each conformation over iteration   
+
+        if self.n_conf == 1:
+            self.LL_iter2 = np.array(LL_iter)
+            self.dm2 = np.array(dm_iter)
+            self.mc2 = np.array(mc_iter)
+            self.m_guess2 = m_guess
+            self.c_guess2 = c_guess
+            return True
 
         for i in range(n_iter): # i = current iteration
             j  = i%n_mols # j = mol to update conformation
@@ -278,8 +297,7 @@ class Sample(object):
             LL2_after,  m2_after  = MLE(np.mean(m[c2_after]),  s[c2_after],  r[c2_after])
                                 
             # Accept update if LL increases with both conformational groups                   
-            if (LL1_before + LL2_before > LL1_after + LL2_after):   
-#            if (LL1_before > LL1_after) & (LL2_before > LL2_after):                  
+            if (LL1_before + LL2_before > LL1_after + LL2_after):                    
                 c_guess[j] = c2 # Update new conformation (c2) of j-mol 
                 LL_new = 0
                 mc_new = []
@@ -319,8 +337,8 @@ class Sample(object):
 # s_m: sigma, std
 # c: color
 
-g1 = {'N':2000, 'm_m':10, 'm_s': 2, 's_m':0.3, 's_s':0.1, 'c':color[0]}
-g2 = {'N':1000, 'm_m':15, 'm_s': 0.1, 's_m':3, 's_s':1, 'c':color[1]}
+g1 = {'N':1000, 'm_m':10, 'm_s': 10, 's_m':3, 's_s':1, 'c':color[0]}
+g2 = {'N':2000, 'm_m':15, 'm_s': 10, 's_m':3, 's_s':1, 'c':color[1]}
 groups = [g1]
 
 sample = Sample(groups)
